@@ -68,39 +68,6 @@ class deploy_improvment_agent_fortran:
             # --- ÉTAPE 1: PLAN PRÉLIMINAIRE ---
             self.logger.info("Génération d'un plan d'amélioration préliminaire...")
             project_tree_str = generate_tree_llm(directory, excluded_dirs=self.exclude_dir)
-            old_improvement_prompt = f"""DEMANDE UTILISATEUR: {user_idea}
-
-                ARBORESCENCE DU PROJET:
-                {project_tree_str}
-
-                TA MISSION : Agir comme un chef de projet technique.
-                1. Analyse la demande de l'utilisateur pour définir un objectif.
-                2. Décompose cet objectif en tâches précises pour un agent développeur.
-                3. Pour chaque tâche, détermine quel type d'information est nécessaire.
-
-                COMMENT FORMULER LES CONSULTATIONS RAG :
-                Le système RAG est un expert qui peut à la fois **analyser le code** et **extraire le code source**. Tu dois choisir la bonne approche pour chaque besoin.
-
-                **QUAND DEMANDER UNE ANALYSE (Tâches de compréhension ou de rédaction) :**
-                Si une tâche nécessite de comprendre des concepts globaux, des relations, ou de rédiger de la documentation générale (comme un README), demande une ANALYSE.
-
-                Exemples de bonnes consultations d'ANALYSE :
-                - "Explique-moi le rôle et la responsabilité principale du module 'Build_Kernel.f90' dans le projet."
-                - "Fournis une synthèse de l'architecture globale du projet en vue de rédiger un README."
-                - "Quelles sont les entités qui appellent la subroutine 'pkernel_free' ?"
-
-                **QUAND DEMANDER LE CODE SOURCE (Tâches de modification ou de documentation de code) :**
-                Si un développeur doit **modifier**, **refactoriser**, ou **documenter une entité de code spécifique** (subroutine, fonction), il a besoin du CODE SOURCE EXACT. Dans ce cas, demande une EXTRACTION précise.
-
-                Exemples de bonnes consultations d'EXTRACTION :
-                - "Veuillez extraire le code complet de la subroutine 'fourtrans_isf'."
-                - "Fournis-moi la définition du type 'coulomb_operator' qui se trouve dans PStypes.f90."
-
-                **INSTRUCTIONS FINALES :**
-                - Pour chaque tâche, crée une consultation RAG appropriée (soit analyse, soit extraction).
-                - Assigne des clés de contexte RAG (`rag_context_key`) aux tâches qui en ont besoin.
-                - Sois aussi précis que possible dans tes demandes d'extraction.
-                """
 
             improvement_prompt = f"""DEMANDE UTILISATEUR: {user_idea}
 

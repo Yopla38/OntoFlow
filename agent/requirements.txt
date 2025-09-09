@@ -56,3 +56,4 @@ spacy
 scikit-learn
 pykeen
 fprettify
+rapidfuzz

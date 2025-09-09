@@ -123,6 +123,7 @@ class OntoDocumentProcessor(DocumentProcessor):
         text_content, doc_metadata = await self._extract_text_with_metadata(filepath)
         metadata = {**doc_metadata, **(additional_metadata or {})}
 
+        # TODO file selector
         if file_type == 'fortran':
 
             print(f"✂️  Utilisation du chunker Fortran sémantique")

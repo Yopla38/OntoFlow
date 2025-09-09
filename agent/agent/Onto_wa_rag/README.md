@@ -4,7 +4,7 @@ Welcome, hackers! OntoRAG is a high-powered Retrieval-Augmented Generation (RAG)
 
 Forget simple keyword search. This is your toolkit to create agents that can analyze dependencies, explain scientific concepts hidden in the code, and even suggest refactors.
 
-## 🚀 Core Concept for Hackathon Devs: The Two-Tiered Agent System
+## 🚀 Core Concept: The Two-Tiered Agent System
 
 OntoRAG provides two ways to query the system, designed for different agent behaviors. Understanding this is key to building awesome projects.
 
@@ -95,7 +95,7 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())```
-
+```
 ## 🤖 The Conversational Agent in Depth (`/agent`)
 
 This is your primary tool for building sophisticated AI applications.

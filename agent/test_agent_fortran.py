@@ -39,6 +39,7 @@ def lire_fichier_texte(chemin_fichier):
 
 
 async def main():
+
     from agent.Agent_fortran import Deployer_agent_fortran
 
     # Configuration des arguments en ligne de commande

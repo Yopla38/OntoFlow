@@ -1,3 +1,30 @@
+## 1. Installation
+```bash
+Create a new environnement (tested with python 3.10)
+
+cd 2-aiengine/OntoFlow/agent
+pip install -r requirements.txt
+python -m pip install aider-install
+aider-install
+```
+
+## 2. Configuration
+
+Place your OpenAI API key and Anthropic API key in two files.
+```bash
+mkdir keys
+echo "sk-YourSuperSecretApiKey" > keys/openAI_key.txt
+echo "sk-YourSuperSecretApiKey" > keys/anthropicAI_key.txt
+```
+
+Modify the constant API_KEY_PATH in agent/agent/Onto_wa_rag/CONSTANT.py
+
+## 3. Run
+
+```bash
+python agent/test_agent_fortran.py --program-path test_folder/ --idea test/idea.txt
+```
+
 # Importants files for agents:
     - /agent/CONSTANT.py to define somes constants
     - /agent/ROLES.py to define agents roles
