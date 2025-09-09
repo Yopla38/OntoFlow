@@ -1,0 +1,149 @@
+@prefix :        <http://bigdft.org/ontology#> .
+@prefix owl:     <http://www.w3.org/2002/07/owl#> .
+@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+
+@prefix code:    <http://source-code.org/fortran#> .
+@prefix phys:    <http://quantum-chemistry.org/dft#> .
+@prefix algo:    <http://bigdft.org/algo#> .
+@prefix qual:    <http://bigdft.org/quality#> .
+
+#################################################################
+# Ontology metadata
+#################################################################
+:BigDFTOntology
+        a               owl:Ontology ;
+        rdfs:label      "BigDFT Code & Physics Ontology"@en ;
+        rdfs:comment    "Ontologie unifiée pour indexer le code Fortran (BigDFT) et les concepts de DFT"@fr ;
+        owl:versionInfo "3.0" .
+
+#################################################################
+# 1.  Socle FORTRAN / RAG  (namespace code:)
+#################################################################
+
+### Classes hiérarchiques (éléments de programme)
+code:ProgramUnit       a owl:Class ; rdfs:label "Program Unit"@en .
+code:Program           a owl:Class ; rdfs:subClassOf code:ProgramUnit .
+code:Module            a owl:Class ; rdfs:subClassOf code:ProgramUnit .
+code:Subroutine        a owl:Class ; rdfs:subClassOf code:ProgramUnit .
+code:Function          a owl:Class ; rdfs:subClassOf code:ProgramUnit .
+code:Interface         a owl:Class ; rdfs:subClassOf code:ProgramUnit .
+code:DerivedType       a owl:Class ; rdfs:subClassOf code:ProgramUnit .
+code:BlockData         a owl:Class ; rdfs:subClassOf code:ProgramUnit .
+code:ProcedureStmt     a owl:Class ; rdfs:subClassOf code:ProgramUnit .
+code:Variable          a owl:Class ; rdfs:label "Variable"@en .
+
+### Objet « fichier »
+code:SourceFile        a owl:Class ; rdfs:label "Source File"@en .
+
+### Propriétés d’objet
+code:contains          a owl:ObjectProperty ;
+        rdfs:domain    code:ProgramUnit ;
+        rdfs:range     code:ProgramUnit , code:Variable ;
+        rdfs:comment   "Relation de contenance structurale"@fr .
+
+code:calls             a owl:ObjectProperty ;
+        rdfs:domain    code:Subroutine , code:Function ;
+        rdfs:range     code:Subroutine , code:Function ;
+        rdfs:comment   "Appel effectif d'une routine"@fr .
+
+code:usesModule        a owl:ObjectProperty ;
+        rdfs:domain    code:ProgramUnit ;
+        rdfs:range     code:Module ;
+        rdfs:comment   "Directive USE <module>"@fr .
+
+code:definedInFile     a owl:ObjectProperty ;
+        rdfs:domain    code:ProgramUnit ;
+        rdfs:range     code:SourceFile ;
+        rdfs:comment   "Localisation du code dans un fichier"@fr .
+
+### Propriétés de données minimales (pour chunking)
+code:hasName   a owl:DatatypeProperty ; rdfs:domain code:ProgramUnit ; rdfs:range xsd:string .
+code:lineBegin a owl:DatatypeProperty ; rdfs:domain code:ProgramUnit ; rdfs:range xsd:integer .
+code:lineEnd   a owl:DatatypeProperty ; rdfs:domain code:ProgramUnit ; rdfs:range xsd:integer .
+code:filePath  a owl:DatatypeProperty ; rdfs:domain code:SourceFile , code:ProgramUnit ; rdfs:range xsd:string .
+
+#################################################################
+# 2.  Concepts physiques DFT  (namespace phys:)
+#################################################################
+phys:PhysicalConcept  a owl:Class ; rdfs:label "Physical Concept"@en .
+phys:DFTConcept       a owl:Class ; rdfs:subClassOf phys:PhysicalConcept .
+phys:WaveFunction     a owl:Class ; rdfs:subClassOf phys:DFTConcept .
+phys:ElectronDensity  a owl:Class ; rdfs:subClassOf phys:DFTConcept .
+phys:ExchangeCorrelation a owl:Class ; rdfs:subClassOf phys:DFTConcept .
+phys:BasisSet         a owl:Class ; rdfs:subClassOf phys:DFTConcept .
+phys:Pseudopotential  a owl:Class ; rdfs:subClassOf phys:DFTConcept .
+phys:SCFCycle         a owl:Class ; rdfs:subClassOf phys:DFTConcept .
+
+# Molecular Dynamics concepts
+phys:MolecularDynamics     a owl:Class ; rdfs:subClassOf phys:PhysicalConcept .
+phys:Particle              a owl:Class ; rdfs:subClassOf phys:PhysicalConcept .
+phys:Force                 a owl:Class ; rdfs:subClassOf phys:PhysicalConcept .
+phys:Potential             a owl:Class ; rdfs:subClassOf phys:PhysicalConcept .
+phys:LennardJones          a owl:Class ; rdfs:subClassOf phys:Potential .
+phys:Thermostat            a owl:Class ; rdfs:subClassOf phys:MolecularDynamics .
+phys:Integrator            a owl:Class ; rdfs:subClassOf phys:MolecularDynamics .
+phys:VelocityVerlet        a owl:Class ; rdfs:subClassOf phys:Integrator .
+
+#################################################################
+# 3.  Patterns algorithmiques  (namespace algo:)
+#################################################################
+algo:AlgorithmicPattern  a owl:Class .
+algo:MatrixOperation     a owl:Class ; rdfs:subClassOf algo:AlgorithmicPattern .
+algo:FFTOperation        a owl:Class ; rdfs:subClassOf algo:AlgorithmicPattern .
+algo:PoissonSolver       a owl:Class ; rdfs:subClassOf algo:AlgorithmicPattern .
+algo:ParallelPattern     a owl:Class ; rdfs:subClassOf algo:AlgorithmicPattern .
+algo:MemoryPattern       a owl:Class ; rdfs:subClassOf algo:AlgorithmicPattern .
+# Algorithmic patterns for MD
+algo:TimeIntegration       a owl:Class ; rdfs:subClassOf algo:AlgorithmicPattern .
+algo:PairwiseComputation   a owl:Class ; rdfs:subClassOf algo:AlgorithmicPattern .
+algo:PeriodicBoundary      a owl:Class ; rdfs:subClassOf algo:AlgorithmicPattern .
+algo:EnergyConservation    a owl:Class ; rdfs:subClassOf algo:AlgorithmicPattern .
+algo:TemperatureControl    a owl:Class ; rdfs:subClassOf algo:AlgorithmicPattern .
+
+#################################################################
+# 4.  Qualité / optimisation  (namespace qual:)
+#################################################################
+qual:QualityMetric          a owl:Class .
+qual:OptimizationOpportunity a owl:Class ; rdfs:subClassOf qual:QualityMetric .
+qual:VectorizationCandidate  a owl:Class ; rdfs:subClassOf qual:OptimizationOpportunity .
+qual:ParallelizationCandidate a owl:Class ; rdfs:subClassOf qual:OptimizationOpportunity .
+qual:MemoryOptimization      a owl:Class ; rdfs:subClassOf qual:OptimizationOpportunity .
+qual:CodeSmell               a owl:Class ; rdfs:subClassOf qual:QualityMetric .
+
+#################################################################
+# 5.  Relations croisées Code ↔ Physique / Pattern / Qualité
+#################################################################
+code:implementsConcept a owl:ObjectProperty ;
+        rdfs:domain    code:ProgramUnit ;
+        rdfs:range     phys:PhysicalConcept .
+
+code:hasPattern        a owl:ObjectProperty ;
+        rdfs:domain    code:ProgramUnit ;
+        rdfs:range     algo:AlgorithmicPattern .
+
+code:hasOptimization   a owl:ObjectProperty ;
+        rdfs:domain    code:ProgramUnit ;
+        rdfs:range     qual:OptimizationOpportunity .
+
+#################################################################
+# 6.  Métadonnées supplémentaires utiles au RAG
+#################################################################
+code:embedding   a owl:DatatypeProperty ; rdfs:domain code:ProgramUnit ; rdfs:range xsd:string .
+code:semanticHash a owl:DatatypeProperty ; rdfs:domain code:ProgramUnit ; rdfs:range xsd:string .
+code:lastModified a owl:DatatypeProperty ; rdfs:domain code:ProgramUnit ; rdfs:range xsd:dateTime .
+
+@prefix biblio: <http://example.org/biblio#> .
+
+biblio:Article        a owl:Class .
+biblio:Section        a owl:Class .
+biblio:Figure         a owl:Class .
+biblio:ReferenceList  a owl:Class .
+biblio:Citation       a owl:Class .
+biblio:hasSection     a owl:ObjectProperty ; rdfs:domain biblio:Article ; rdfs:range biblio:Section .
+biblio:hasFigure      a owl:ObjectProperty ; rdfs:domain biblio:Article ; rdfs:range biblio:Figure .
+biblio:hasCitation    a owl:ObjectProperty ; rdfs:domain biblio:Section ; rdfs:range biblio:Citation .
+biblio:title          a owl:DatatypeProperty ; rdfs:domain biblio:Article ; rdfs:range xsd:string .
+biblio:year           a owl:DatatypeProperty ; rdfs:domain biblio:Article ; rdfs:range xsd:gYear .
+biblio:doi            a owl:DatatypeProperty ; rdfs:domain biblio:Article ; rdfs:range xsd:string .

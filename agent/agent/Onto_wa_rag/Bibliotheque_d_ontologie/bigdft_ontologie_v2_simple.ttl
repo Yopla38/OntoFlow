@@ -1,0 +1,64 @@
+@prefix :        <http://bigdft.org/ontology#> .
+@prefix owl:     <http://www.w3.org/2002/07/owl#> .
+@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+
+@prefix code:    <http://source-code.org/fortran#> .
+@prefix phys:    <http://quantum-chemistry.org/dft#> .
+@prefix algo:    <http://bigdft.org/algo#> .
+@prefix qual:    <http://bigdft.org/quality#> .
+
+#################################################################
+# Ontology metadata
+#################################################################
+:BigDFTOntology
+        a               owl:Ontology ;
+        rdfs:label      "BigDFT Code & Physics Ontology"@en ;
+        rdfs:comment    "Ontologie unifiée pour indexer les concepts de physique, algorithmiques et d’optimisation associés au code BigDFT."@fr ;
+        owl:versionInfo "3.1" .
+
+#################################################################
+# 2.  Concepts physiques DFT  (namespace phys:)
+#################################################################
+phys:PhysicalConcept a owl:Class ; rdfs:label "Physical Concept"@en ; rdfs:comment "Concept général de physique utilisé dans les modèles ab initio ou moléculaires."@fr .
+phys:DFTConcept a owl:Class ; rdfs:subClassOf phys:PhysicalConcept ; rdfs:label "DFT Concept"@en ; rdfs:comment "Concept dérivé de la théorie de la fonctionnelle de la densité (DFT)."@fr .
+phys:WaveFunction a owl:Class ; rdfs:subClassOf phys:DFTConcept ; rdfs:label "Wave Function"@en ; rdfs:comment "Fonction mathématique représentant l'état quantique d’un système."@fr .
+phys:ElectronDensity a owl:Class ; rdfs:subClassOf phys:DFTConcept ; rdfs:label "Electron Density"@en ; rdfs:comment "Densité spatiale des électrons dans un système quantique."@fr .
+phys:ExchangeCorrelation a owl:Class ; rdfs:subClassOf phys:DFTConcept ; rdfs:label "Exchange-Correlation Functional"@en ; rdfs:comment "Composante de la DFT modélisant les interactions complexes entre électrons."@fr .
+phys:BasisSet a owl:Class ; rdfs:subClassOf phys:DFTConcept ; rdfs:label "Basis Set"@en ; rdfs:comment "Fonctions utilisées pour représenter les orbitales électroniques."@fr .
+phys:Pseudopotential a owl:Class ; rdfs:subClassOf phys:DFTConcept ; rdfs:label "Pseudopotential"@en ; rdfs:comment "Potentiel effectif simplifiant les interactions avec les électrons de cœur."@fr .
+phys:SCFCycle a owl:Class ; rdfs:subClassOf phys:DFTConcept ; rdfs:label "SCF Cycle"@en ; rdfs:comment "Procédure itérative pour résoudre les équations de Kohn-Sham jusqu’à convergence."@fr .
+phys:MolecularDynamics a owl:Class ; rdfs:subClassOf phys:PhysicalConcept ; rdfs:label "Molecular Dynamics"@en ; rdfs:comment "Méthode simulant le mouvement des atomes en fonction du temps."@fr .
+phys:Particle a owl:Class ; rdfs:subClassOf phys:PhysicalConcept ; rdfs:label "Particle"@en ; rdfs:comment "Entité ponctuelle simulée dans un système moléculaire ou quantique."@fr .
+phys:Force a owl:Class ; rdfs:subClassOf phys:PhysicalConcept ; rdfs:label "Force"@en ; rdfs:comment "Interaction vectorielle appliquée à une particule."@fr .
+phys:Potential a owl:Class ; rdfs:subClassOf phys:PhysicalConcept ; rdfs:label "Potential"@en ; rdfs:comment "Fonction énergie d’interaction entre particules ou champs."@fr .
+phys:LennardJones a owl:Class ; rdfs:subClassOf phys:Potential ; rdfs:label "Lennard-Jones"@en ; rdfs:comment "Potentiel empirique décrivant l’interaction paire courte portée."@fr .
+phys:Thermostat a owl:Class ; rdfs:subClassOf phys:MolecularDynamics ; rdfs:label "Thermostat"@en ; rdfs:comment "Mécanisme pour contrôler la température dans une simulation MD."@fr .
+phys:Integrator a owl:Class ; rdfs:subClassOf phys:MolecularDynamics ; rdfs:label "Integrator"@en ; rdfs:comment "Algorithme numérique pour l'intégration des équations du mouvement."@fr .
+phys:VelocityVerlet a owl:Class ; rdfs:subClassOf phys:Integrator ; rdfs:label "Velocity-Verlet"@en ; rdfs:comment "Schéma d'intégration utilisé en dynamique moléculaire."@fr .
+
+#################################################################
+# 3.  Patterns algorithmiques  (namespace algo:)
+#################################################################
+algo:AlgorithmicPattern a owl:Class ; rdfs:label "Algorithmic Pattern"@en ; rdfs:comment "Motif récurrent dans les algorithmes scientifiques ou numériques."@fr .
+algo:MatrixOperation a owl:Class ; rdfs:subClassOf algo:AlgorithmicPattern ; rdfs:label "Matrix Operation"@en ; rdfs:comment "Opérations impliquant des matrices (multiplication, inversion, diagonalisation)."@fr .
+algo:FFTOperation a owl:Class ; rdfs:subClassOf algo:AlgorithmicPattern ; rdfs:label "FFT Operation"@en ; rdfs:comment "Transformée de Fourier rapide appliquée à des grilles régulières."@fr .
+algo:PoissonSolver a owl:Class ; rdfs:subClassOf algo:AlgorithmicPattern ; rdfs:label "Poisson Solver"@en ; rdfs:comment "Résolution numérique de l’équation de Poisson pour le potentiel électrostatique."@fr .
+algo:ParallelPattern a owl:Class ; rdfs:subClassOf algo:AlgorithmicPattern ; rdfs:label "Parallel Pattern"@en ; rdfs:comment "Stratégie de parallélisation telle que MPI, OpenMP, ou tâches hybrides."@fr .
+algo:MemoryPattern a owl:Class ; rdfs:subClassOf algo:AlgorithmicPattern ; rdfs:label "Memory Pattern"@en ; rdfs:comment "Comportement de l'utilisation mémoire (blocage, accès local, hiérarchie cache)."@fr .
+algo:TimeIntegration a owl:Class ; rdfs:subClassOf algo:AlgorithmicPattern ; rdfs:label "Time Integration"@en ; rdfs:comment "Procédé numérique pour propager des équations différentielles dans le temps."@fr .
+algo:PairwiseComputation a owl:Class ; rdfs:subClassOf algo:AlgorithmicPattern ; rdfs:label "Pairwise Computation"@en ; rdfs:comment "Calculs double-boucles entre particules ou éléments pour interactions."@fr .
+algo:PeriodicBoundary a owl:Class ; rdfs:subClassOf algo:AlgorithmicPattern ; rdfs:label "Periodic Boundary Conditions"@en ; rdfs:comment "Application de topologies périodiques dans les simulations numériques."@fr .
+algo:EnergyConservation a owl:Class ; rdfs:subClassOf algo:AlgorithmicPattern ; rdfs:label "Energy Conservation"@en ; rdfs:comment "Traitement ou vérification de la conservation de l'énergie dans un algorithme."@fr .
+algo:TemperatureControl a owl:Class ; rdfs:subClassOf algo:AlgorithmicPattern ; rdfs:label "Temperature Control"@en ; rdfs:comment "Technique numérique de régulation thermique (ex : rescaling, thermostat)."@fr .
+
+#################################################################
+# 4.  Qualité / optimisation  (namespace qual:)
+#################################################################
+qual:QualityMetric a owl:Class ; rdfs:label "Quality Metric"@en ; rdfs:comment "Indicateur qualitatif de lisibilité, maintenabilité ou efficacité du code."@fr .
+qual:OptimizationOpportunity a owl:Class ; rdfs:subClassOf qual:QualityMetric ; rdfs:label "Optimization Opportunity"@en ; rdfs:comment "Candidat potentiel à une amélioration algorithmique ou structurelle."@fr .
+qual:VectorizationCandidate a owl:Class ; rdfs:subClassOf qual:OptimizationOpportunity ; rdfs:label "Vectorization Candidate"@en ; rdfs:comment "Motif de boucle ou opération pouvant être vectorisé (SIMD)."@fr .
+qual:ParallelizationCandidate a owl:Class ; rdfs:subClassOf qual:OptimizationOpportunity ; rdfs:label "Parallelization Candidate"@en ; rdfs:comment "Zone de code parallélisable efficacement."@fr .
+qual:MemoryOptimization a owl:Class ; rdfs:subClassOf qual:OptimizationOpportunity ; rdfs:label "Memory Optimization"@en ; rdfs:comment "Possibilité de réduire l’usage mémoire ou d'améliorer la localité."@fr .
+qual:CodeSmell a owl:Class ; rdfs:subClassOf qual:QualityMetric ; rdfs:label "Code Smell"@en ; rdfs:comment "Motif de code suggérant un problème ou une dette technique."@fr .

@@ -1,0 +1,13 @@
+@prefix biblio: <http://example.org/biblio#> .
+
+biblio:Article        a owl:Class .
+biblio:Section        a owl:Class .
+biblio:Figure         a owl:Class .
+biblio:ReferenceList  a owl:Class .
+biblio:Citation       a owl:Class .
+biblio:hasSection     a owl:ObjectProperty ; rdfs:domain biblio:Article ; rdfs:range biblio:Section .
+biblio:hasFigure      a owl:ObjectProperty ; rdfs:domain biblio:Article ; rdfs:range biblio:Figure .
+biblio:hasCitation    a owl:ObjectProperty ; rdfs:domain biblio:Section ; rdfs:range biblio:Citation .
+biblio:title          a owl:DatatypeProperty ; rdfs:domain biblio:Article ; rdfs:range xsd:string .
+biblio:year           a owl:DatatypeProperty ; rdfs:domain biblio:Article ; rdfs:range xsd:gYear .
+biblio:doi            a owl:DatatypeProperty ; rdfs:domain biblio:Article ; rdfs:range xsd:string .

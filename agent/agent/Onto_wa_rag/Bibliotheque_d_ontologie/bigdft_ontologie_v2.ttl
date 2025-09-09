@@ -1,0 +1,190 @@
+@prefix :        <http://bigdft.org/ontology#> .
+@prefix owl:     <http://www.w3.org/2002/07/owl#> .
+@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+
+@prefix code:    <http://source-code.org/fortran#> .
+@prefix phys:    <http://quantum-chemistry.org/dft#> .
+@prefix algo:    <http://bigdft.org/algo#> .
+@prefix qual:    <http://bigdft.org/quality#> .
+
+#################################################################
+# Ontology metadata
+#################################################################
+:BigDFTOntology
+        a               owl:Ontology ;
+        rdfs:label      "BigDFT Code & Physics Ontology"@en ;
+        rdfs:comment    "Unified ontology for indexing physics, algorithmic and optimization concepts associated with BigDFT code, optimized for Fortran code similarity matching."@en ;
+        owl:versionInfo "3.2" .
+
+#################################################################
+# 2.  DFT Physics Concepts (namespace phys:) - Optimized for Fortran similarity
+#################################################################
+phys:PhysicalConcept a owl:Class ;
+    rdfs:label "Physical Concept"@en ;
+    rdfs:comment "General physics concept used in ab initio or molecular models."@en .
+
+phys:DFTConcept a owl:Class ;
+    rdfs:subClassOf phys:PhysicalConcept ;
+    rdfs:label "DFT Concept"@en ;
+    rdfs:comment "Concept derived from Density Functional Theory (DFT)."@en .
+
+phys:WaveFunction a owl:Class ;
+    rdfs:subClassOf phys:DFTConcept ;
+    rdfs:label "Fortran wavefunction coefficient calculation"@en ;
+    rdfs:comment "Mathematical function representing the quantum state of a system, implemented as coefficient arrays in Fortran routines."@en .
+
+phys:ElectronDensity a owl:Class ;
+    rdfs:subClassOf phys:DFTConcept ;
+    rdfs:label "Electronic density grid calculation"@en ;
+    rdfs:comment "Spatial density of electrons in a quantum system, computed on numerical grids using Fortran array operations."@en .
+
+phys:ExchangeCorrelation a owl:Class ;
+    rdfs:subClassOf phys:DFTConcept ;
+    rdfs:label "Exchange-correlation functional evaluation"@en ;
+    rdfs:comment "DFT component modeling complex electron interactions, implemented as numerical functional evaluations in Fortran."@en .
+
+phys:BasisSet a owl:Class ;
+    rdfs:subClassOf phys:DFTConcept ;
+    rdfs:label "Basis function expansion routine"@en ;
+    rdfs:comment "Functions used to represent electronic orbitals, implemented as coefficient expansion algorithms."@en .
+
+phys:Pseudopotential a owl:Class ;
+    rdfs:subClassOf phys:DFTConcept ;
+    rdfs:label "Pseudopotential matrix elements"@en ;
+    rdfs:comment "Effective potential simplifying core electron interactions, computed as matrix element evaluations."@en .
+
+phys:SCFCycle a owl:Class ;
+    rdfs:subClassOf phys:DFTConcept ;
+    rdfs:label "Fortran SCF iteration implementation"@en ;
+    rdfs:comment "Iterative procedure solving Kohn-Sham equations until convergence, implemented as nested iteration loops."@en .
+
+phys:MolecularDynamics a owl:Class ;
+    rdfs:subClassOf phys:PhysicalConcept ;
+    rdfs:label "Molecular dynamics timestep integration"@en ;
+    rdfs:comment "Method simulating atomic motion over time using numerical integration schemes in Fortran."@en .
+
+phys:Particle a owl:Class ;
+    rdfs:subClassOf phys:PhysicalConcept ;
+    rdfs:label "Particle coordinate array handling"@en ;
+    rdfs:comment "Point entity simulated in molecular or quantum systems, managed as coordinate arrays."@en .
+
+phys:Force a owl:Class ;
+    rdfs:subClassOf phys:PhysicalConcept ;
+    rdfs:label "Force vector computation routine"@en ;
+    rdfs:comment "Vectorial interaction applied to particles, computed using numerical derivative algorithms."@en .
+
+phys:Potential a owl:Class ;
+    rdfs:subClassOf phys:PhysicalConcept ;
+    rdfs:label "Potential energy function evaluation"@en ;
+    rdfs:comment "Energy interaction function between particles or fields, evaluated numerically."@en .
+
+phys:LennardJones a owl:Class ;
+    rdfs:subClassOf phys:Potential ;
+    rdfs:label "Lennard-Jones pairwise interaction"@en ;
+    rdfs:comment "Empirical potential describing short-range pairwise interactions, computed in double loops."@en .
+
+phys:Thermostat a owl:Class ;
+    rdfs:subClassOf phys:MolecularDynamics ;
+    rdfs:label "Temperature control algorithm"@en ;
+    rdfs:comment "Mechanism for controlling temperature in MD simulations using velocity scaling routines."@en .
+
+phys:Integrator a owl:Class ;
+    rdfs:subClassOf phys:MolecularDynamics ;
+    rdfs:label "Numerical integration algorithm"@en ;
+    rdfs:comment "Numerical algorithm for integrating equations of motion in time evolution loops."@en .
+
+phys:VelocityVerlet a owl:Class ;
+    rdfs:subClassOf phys:Integrator ;
+    rdfs:label "Velocity-Verlet algorithm implementation"@en ;
+    rdfs:comment "Integration scheme used in molecular dynamics, implemented as position-velocity update loops."@en .
+
+#################################################################
+# 3.  Algorithmic Patterns (namespace algo:) - Optimized for Fortran similarity
+#################################################################
+algo:AlgorithmicPattern a owl:Class ;
+    rdfs:label "Algorithmic Pattern"@en ;
+    rdfs:comment "Recurring pattern in scientific or numerical algorithms implemented in Fortran."@en .
+
+algo:MatrixOperation a owl:Class ;
+    rdfs:subClassOf algo:AlgorithmicPattern ;
+    rdfs:label "Matrix diagonalization routine"@en ;
+    rdfs:comment "Operations involving matrices (multiplication, inversion, diagonalization) using LAPACK/BLAS calls."@en .
+
+algo:FFTOperation a owl:Class ;
+    rdfs:subClassOf algo:AlgorithmicPattern ;
+    rdfs:label "Fortran FFT grid transformation"@en ;
+    rdfs:comment "Fast Fourier Transform applied to regular grids using FFTW library calls in Fortran routines."@en .
+
+algo:PoissonSolver a owl:Class ;
+    rdfs:subClassOf algo:AlgorithmicPattern ;
+    rdfs:label "Poisson equation numerical solver"@en ;
+    rdfs:comment "Numerical solution of Poisson equation for electrostatic potential using iterative grid methods."@en .
+
+algo:ParallelPattern a owl:Class ;
+    rdfs:subClassOf algo:AlgorithmicPattern ;
+    rdfs:label "MPI parallel computation pattern"@en ;
+    rdfs:comment "Parallelization strategy such as MPI, OpenMP, or hybrid task distribution in Fortran codes."@en .
+
+algo:MemoryPattern a owl:Class ;
+    rdfs:subClassOf algo:AlgorithmicPattern ;
+    rdfs:label "Memory access pattern optimization"@en ;
+    rdfs:comment "Memory usage behavior (blocking, local access, cache hierarchy) in array-intensive computations."@en .
+
+algo:TimeIntegration a owl:Class ;
+    rdfs:subClassOf algo:AlgorithmicPattern ;
+    rdfs:label "Time evolution integration scheme"@en ;
+    rdfs:comment "Numerical procedure for propagating differential equations in time using explicit integration loops."@en .
+
+algo:PairwiseComputation a owl:Class ;
+    rdfs:subClassOf algo:AlgorithmicPattern ;
+    rdfs:label "Double loop pairwise interaction"@en ;
+    rdfs:comment "Nested loop computations between particles or elements for interaction calculations."@en .
+
+algo:PeriodicBoundary a owl:Class ;
+    rdfs:subClassOf algo:AlgorithmicPattern ;
+    rdfs:label "Periodic boundary condition handling"@en ;
+    rdfs:comment "Application of periodic topologies in numerical simulations using modular arithmetic operations."@en .
+
+algo:EnergyConservation a owl:Class ;
+    rdfs:subClassOf algo:AlgorithmicPattern ;
+    rdfs:label "Energy conservation verification routine"@en ;
+    rdfs:comment "Processing or verification of energy conservation in algorithms using accumulation and checking routines."@en .
+
+algo:TemperatureControl a owl:Class ;
+    rdfs:subClassOf algo:AlgorithmicPattern ;
+    rdfs:label "Temperature scaling algorithm"@en ;
+    rdfs:comment "Numerical technique for thermal regulation (e.g., rescaling, thermostat) using velocity modification routines."@en .
+
+#################################################################
+# 4.  Quality / Optimization (namespace qual:) - Optimized for Fortran similarity
+#################################################################
+qual:QualityMetric a owl:Class ;
+    rdfs:label "Quality Metric"@en ;
+    rdfs:comment "Qualitative indicator of code readability, maintainability or efficiency in Fortran implementations."@en .
+
+qual:OptimizationOpportunity a owl:Class ;
+    rdfs:subClassOf qual:QualityMetric ;
+    rdfs:label "Optimization Opportunity"@en ;
+    rdfs:comment "Potential candidate for algorithmic or structural improvement in Fortran code."@en .
+
+qual:VectorizationCandidate a owl:Class ;
+    rdfs:subClassOf qual:OptimizationOpportunity ;
+    rdfs:label "Fortran vectorization opportunity"@en ;
+    rdfs:comment "Loop pattern or operation that can be vectorized (SIMD) using compiler directives or intrinsics."@en .
+
+qual:ParallelizationCandidate a owl:Class ;
+    rdfs:subClassOf qual:OptimizationOpportunity ;
+    rdfs:label "OpenMP parallelization candidate"@en ;
+    rdfs:comment "Code region that can be efficiently parallelized using OpenMP directives or MPI decomposition."@en .
+
+qual:MemoryOptimization a owl:Class ;
+    rdfs:subClassOf qual:OptimizationOpportunity ;
+    rdfs:label "Array memory layout optimization"@en ;
+    rdfs:comment "Opportunity to reduce memory usage or improve locality in array-based computations."@en .
+
+qual:CodeSmell a owl:Class ;
+    rdfs:subClassOf qual:QualityMetric ;
+    rdfs:label "Fortran code pattern issue"@en ;
+    rdfs:comment "Code pattern suggesting a problem or technical debt in Fortran implementation."@en .

@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ agent_name }} - Interaction</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Prism.js pour la coloration syntaxique -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/themes/prism-tomorrow.min.css" rel="stylesheet" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/plugins/line-numbers/prism-line-numbers.min.css" rel="stylesheet" />
+
+    <style>
+        body {
+            padding: 20px;
+            background-color: #f8f9fa;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+        }
+
+        /* Sections des prompts */
+        .prompt-section {
+            background-color: #2d2d2d;
+            border-radius: 5px;
+            margin-bottom: 2rem;
+            padding: 1rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .prompt-header {
+            color: #e6db74;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+            font-size: 1.1rem;
+        }
+
+        .prompt-content {
+            color: #f8f8f2;
+            font-family: 'Fira Code', monospace;
+            white-space: pre-wrap;
+            padding: 1rem;
+            background-color: #1e1e1e;
+            border-radius: 4px;
+        }
+
+        /* Section de réponse */
+        .interaction-section {
+            margin-top: 2rem;
+            border-top: 2px solid #444;
+            padding-top: 2rem;
+        }
+
+        /* Blocs de code */
+        .code-block {
+            margin: 1rem 0;
+            background: #2d2d2d;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .code-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #1e1e1e;
+            color: #ffffff;
+            padding: 0.5rem 1rem;
+            border-top-left-radius: 5px;
+            border-top-right-radius: 5px;
+        }
+
+        .file-path {
+            font-family: 'Fira Code', monospace;
+            color: #66d9ef;
+        }
+
+        .language {
+            color: #a6e22e;
+            font-size: 0.9rem;
+        }
+
+        pre {
+            margin: 0;
+            padding: 1rem;
+            background-color: #2d2d2d !important;
+        }
+
+        code {
+            font-family: 'Fira Code', monospace;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        /* Formulaires */
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-control {
+            background-color: #f8f9fa;
+            border: 1px solid #ced4da;
+        }
+
+        /* Cards */
+        .card {
+            margin-bottom: 1rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            border: none;
+            background-color: #fff;
+        }
+
+        .card-header {
+            background-color: #f8f9fa;
+            border-bottom: 1px solid #eee;
+        }
+
+        /* Alertes */
+        .alert {
+            margin-top: 1rem;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="mb-4">
+            <h1>{{ agent_name }}</h1>
+            <p class="text-muted">Projet: {{ project_name }} - {{ timestamp }}</p>
+        </header>
+
+        <!-- Section Prompt Système -->
+        {% if system_prompt %}
+        <div class="prompt-section">
+            <div class="prompt-header">Prompt Système :</div>
+            <div class="prompt-content">{{ system_prompt }}</div>
+        </div>
+        {% endif %}
+
+        <!-- Section Message d'Entrée -->
+        {% if input_message %}
+        <div class="prompt-section">
+            <div class="prompt-header">Message Reçu :</div>
+            <div class="prompt-content">{{ input_message }}</div>
+        </div>
+        {% endif %}
+
+        <!-- Section Réponse -->
+        <div class="interaction-section">
+            <h3>Réponse de l'Agent :</h3>
+            <form id="interactionForm" onsubmit="submitForm(event)">
+                {% macro render_field(key, value) %}
+                    {% if value is mapping %}
+                        {% if value.code_field is defined %}
+                            {# Rendu des blocs de code #}
+                            <div class="code-block">
+                                <div class="code-header">
+                                    <span class="file-path">{{ value.file_path }}</span>
+                                    <span class="language">{{ value.code_field.language | lower }}</span>
+                                </div>
+                                <pre><code class="language-{{ value.code_field.language | lower }}">{{ value.code_field.content | escape }}</code></pre>
+                            </div>
+                        {% elif value.input_field is defined %}
+                            {# Rendu des champs de formulaire #}
+                            <div class="form-group">
+                                <label for="{{ value.input_field.field_name }}">
+                                    {{ value.input_field.input_placeholder }}
+                                    {% if value.input_field.is_required %}*{% endif %}
+                                </label>
+                                <input type="text"
+                                       class="form-control"
+                                       id="{{ value.input_field.field_name }}"
+                                       name="{{ value.input_field.field_name }}"
+                                       placeholder="{{ value.input_field.input_placeholder }}"
+                                       {% if value.input_field.is_required %}required{% endif %}
+                                       {% if not value.input_field.is_editable %}readonly{% endif %}>
+                            </div>
+                        {% else %}
+                            {# Rendu des objets imbriqués #}
+                            <div class="card">
+                                {% if key %}
+                                    <div class="card-header">
+                                        <strong>{{ key | capitalize }}</strong>
+                                    </div>
+                                {% endif %}
+                                <div class="card-body">
+                                    {% for subkey, subvalue in value.items() %}
+                                        {{ render_field(subkey, subvalue) }}
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        {% endif %}
+                    {% elif value is iterable and value is not string %}
+                        {# Rendu des listes #}
+                        {% if key %}
+                            <h5>{{ key | capitalize }}</h5>
+                        {% endif %}
+                        <div class="list-group mb-3">
+                            {% for item in value %}
+                                {{ render_field('', item) }}
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        {# Rendu des valeurs simples #}
+                        {% if key %}
+                            <p><strong>{{ key | capitalize }}:</strong> {{ value }}</p>
+                        {% else %}
+                            <p>{{ value }}</p>
+                        {% endif %}
+                    {% endif %}
+                {% endmacro %}
+
+                {# Rendu principal du contenu #}
+                {{ render_field('', data) }}
+
+                {# Bouton de soumission si des champs éditables sont présents #}
+                {% if editable %}
+                    <button type="submit" class="btn btn-primary mt-3">Soumettre</button>
+                {% endif %}
+            </form>
+        </div>
+    </div>
+
+    <!-- Scripts nécessaires -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-core.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/plugins/autoloader/prism-autoloader.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/plugins/line-numbers/prism-line-numbers.min.js"></script>
+
+    <script>
+        // Fonction de soumission du formulaire
+        async function submitForm(event) {
+            event.preventDefault();
+
+            const form = document.getElementById('interactionForm');
+            const submitButton = form.querySelector('button[type="submit"]');
+            const formData = {};
+
+            // Désactiver le bouton pendant la soumission
+            submitButton.disabled = true;
+
+            // Supprimer les alertes précédentes
+            const existingAlerts = form.querySelectorAll('.alert');
+            existingAlerts.forEach(alert => alert.remove());
+
+            // Collecter les données du formulaire
+            const inputs = form.querySelectorAll('input, textarea');
+            inputs.forEach(input => {
+                formData[input.name] = {
+                    response: input.value,
+                    required: input.required
+                };
+            });
+
+            try {
+                const response = await fetch('http://localhost:8000/submit', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                if (!response.ok) {
+                    throw new Error('Erreur lors de la soumission');
+                }
+
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    // Message de succès
+                    const alert = document.createElement('div');
+                    alert.className = 'alert alert-success mt-3';
+                    alert.textContent = 'Formulaire soumis avec succès. Cette fenêtre va se fermer.';
+                    form.appendChild(alert);
+
+                    // Fermer la fenêtre après 2 secondes
+                    setTimeout(() => window.close(), 2000);
+                } else {
+                    throw new Error(result.message || 'Erreur inconnue');
+                }
+            } catch (error) {
+                // Affichage de l'erreur
+                const alert = document.createElement('div');
+                alert.className = 'alert alert-danger mt-3';
+                alert.textContent = `Erreur: ${error.message}. Veuillez réessayer.`;
+                form.appendChild(alert);
+
+                // Réactiver le bouton
+                submitButton.disabled = false;
+            }
+        }
+
+        // Initialisation de Prism.js après le chargement de la page
+        document.addEventListener('DOMContentLoaded', (event) => {
+            Prism.highlightAll();
+        });
+    </script>
+</body>
+</html>

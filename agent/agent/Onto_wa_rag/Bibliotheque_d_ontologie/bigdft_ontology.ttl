@@ -1,0 +1,547 @@
+ 
+@prefix : <http://bigdft.org/ontology#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix dft: <http://quantum-chemistry.org/dft#> .
+@prefix code: <http://source-code.org/fortran#> .
+
+# ===============================
+# ONTOLOGIE PRINCIPALE
+# ===============================
+
+:BigDFTOntology a owl:Ontology ;
+    rdfs:label "BigDFT Code Analysis Ontology"@en ;
+    rdfs:comment "Ontologie pour l'analyse et l'indexation du code BigDFT"@fr ;
+    owl:versionInfo "2.0" .
+
+# ===============================
+# CLASSES RACINES
+# ===============================
+
+:CodeElement a owl:Class ;
+    rdfs:label "Code Element"@en ;
+    rdfs:comment "Élément de code source indexable"@fr .
+
+:PhysicalConcept a owl:Class ;
+    rdfs:label "Physical Concept"@en ;
+    rdfs:comment "Concept physique ou mathématique en chimie quantique"@fr .
+
+:QualityMetric a owl:Class ;
+    rdfs:label "Quality Metric"@en ;
+    rdfs:comment "Métrique de qualité du code"@fr .
+
+# ===============================
+# ÉLÉMENTS DE CODE (GRANULARITÉ)
+# ===============================
+
+:SourceFile a owl:Class ;
+    rdfs:subClassOf :CodeElement ;
+    rdfs:comment "Fichier source Fortran (.f90, .F90)"@fr .
+
+:Module a owl:Class ;
+    rdfs:subClassOf :CodeElement ;
+    rdfs:comment "Module Fortran avec ses interfaces publiques"@fr .
+
+:Subroutine a owl:Class ;
+    rdfs:subClassOf :CodeElement ;
+    rdfs:comment "Subroutine Fortran"@fr .
+
+:Function a owl:Class ;
+    rdfs:subClassOf :CodeElement ;
+    rdfs:comment "Function Fortran avec type de retour"@fr .
+
+:DerivedType a owl:Class ;
+    rdfs:subClassOf :CodeElement ;
+    rdfs:comment "Type dérivé Fortran (structure de données)"@fr .
+
+:CodeBlock a owl:Class ;
+    rdfs:subClassOf :CodeElement ;
+    rdfs:comment "Bloc de code spécifique (boucle, condition, etc.)"@fr .
+
+:Interface a owl:Class ;
+    rdfs:subClassOf :CodeElement ;
+    rdfs:comment "Interface Fortran (générique ou abstraite)"@fr .
+
+# ===============================
+# CONCEPTS PHYSIQUES DFT
+# ===============================
+
+:DFTConcept a owl:Class ;
+    rdfs:subClassOf :PhysicalConcept ;
+    rdfs:comment "Concepts de la théorie de la fonctionnelle de densité"@fr .
+
+:WaveFunction a owl:Class ;
+    rdfs:subClassOf :DFTConcept ;
+    rdfs:comment "Fonction d'onde et orbitales"@fr .
+
+:ElectronDensity a owl:Class ;
+    rdfs:subClassOf :DFTConcept ;
+    rdfs:comment "Densité électronique"@fr .
+
+:ExchangeCorrelation a owl:Class ;
+    rdfs:subClassOf :DFTConcept ;
+    rdfs:comment "Fonctionnelle d'échange-corrélation"@fr .
+
+:BasisSet a owl:Class ;
+    rdfs:subClassOf :DFTConcept ;
+    rdfs:comment "Base d'ondelettes ou autre"@fr .
+
+:Pseudopotential a owl:Class ;
+    rdfs:subClassOf :DFTConcept ;
+    rdfs:comment "Pseudopotentiel atomique"@fr .
+
+:SCFCycle a owl:Class ;
+    rdfs:subClassOf :DFTConcept ;
+    rdfs:comment "Cycle auto-cohérent"@fr .
+
+# ===============================
+# PATTERNS ALGORITHMIQUES
+# ===============================
+
+:AlgorithmicPattern a owl:Class ;
+    rdfs:subClassOf :CodeElement ;
+    rdfs:comment "Pattern algorithmique récurrent"@fr .
+
+:MatrixOperation a owl:Class ;
+    rdfs:subClassOf :AlgorithmicPattern ;
+    rdfs:comment "Opération matricielle (BLAS/LAPACK)"@fr .
+
+:FFTOperation a owl:Class ;
+    rdfs:subClassOf :AlgorithmicPattern ;
+    rdfs:comment "Transformée de Fourier"@fr .
+
+:PoissonSolver a owl:Class ;
+    rdfs:subClassOf :AlgorithmicPattern ;
+    rdfs:comment "Résolution de l'équation de Poisson"@fr .
+
+:ParallelPattern a owl:Class ;
+    rdfs:subClassOf :AlgorithmicPattern ;
+    rdfs:comment "Pattern de parallélisation (MPI/OpenMP)"@fr .
+
+:MemoryPattern a owl:Class ;
+    rdfs:subClassOf :AlgorithmicPattern ;
+    rdfs:comment "Pattern d'accès mémoire"@fr .
+
+# ===============================
+# MÉTRIQUES ET OPTIMISATIONS
+# ===============================
+
+:OptimizationOpportunity a owl:Class ;
+    rdfs:subClassOf :QualityMetric ;
+    rdfs:comment "Opportunité d'optimisation identifiée"@fr .
+
+:VectorizationCandidate a owl:Class ;
+    rdfs:subClassOf :OptimizationOpportunity ;
+    rdfs:comment "Code vectorisable"@fr .
+
+:ParallelizationCandidate a owl:Class ;
+    rdfs:subClassOf :OptimizationOpportunity ;
+    rdfs:comment "Code parallélisable"@fr .
+
+:MemoryOptimization a owl:Class ;
+    rdfs:subClassOf :OptimizationOpportunity ;
+    rdfs:comment "Optimisation mémoire possible"@fr .
+
+:CodeSmell a owl:Class ;
+    rdfs:subClassOf :QualityMetric ;
+    rdfs:comment "Anti-pattern ou code obsolète"@fr .
+
+# ===============================
+# PROPRIÉTÉS D'OBJET
+# ===============================
+
+# Relations structurelles
+:containedIn a owl:ObjectProperty ;
+    rdfs:domain :CodeElement ;
+    rdfs:range :CodeElement ;
+    rdfs:comment "Élément contenu dans un autre"@fr .
+
+:calls a owl:ObjectProperty ;
+    rdfs:domain :CodeElement ;
+    rdfs:range :CodeElement ;
+    rdfs:comment "Appel de fonction/subroutine"@fr .
+
+:uses a owl:ObjectProperty ;
+    rdfs:domain :CodeElement ;
+    rdfs:range :DerivedType ;
+    rdfs:comment "Utilise un type de données"@fr .
+
+:implements a owl:ObjectProperty ;
+    rdfs:domain :CodeElement ;
+    rdfs:range :PhysicalConcept ;
+    rdfs:comment "Implémente un concept physique"@fr .
+
+:dependsOn a owl:ObjectProperty ;
+    rdfs:domain :Module ;
+    rdfs:range :Module ;
+    rdfs:comment "Dépendance entre modules"@fr .
+
+# Relations sémantiques
+:relatedConcept a owl:ObjectProperty ;
+    rdfs:domain :CodeElement ;
+    rdfs:range :PhysicalConcept ;
+    rdfs:comment "Concept physique lié"@fr .
+
+:hasPattern a owl:ObjectProperty ;
+    rdfs:domain :CodeElement ;
+    rdfs:range :AlgorithmicPattern ;
+    rdfs:comment "Pattern algorithmique présent"@fr .
+
+:hasOptimization a owl:ObjectProperty ;
+    rdfs:domain :CodeElement ;
+    rdfs:range :OptimizationOpportunity ;
+    rdfs:comment "Optimisation possible"@fr .
+
+:similarTo a owl:ObjectProperty ;
+    rdfs:domain :CodeElement ;
+    rdfs:range :CodeElement ;
+    rdfs:comment "Similarité de code (pour déduplication)"@fr .
+
+# ===============================
+# PROPRIÉTÉS DE DONNÉES
+# ===============================
+
+# Localisation du code
+:filePath a owl:DatatypeProperty ;
+    rdfs:domain :SourceFile ;
+    rdfs:range xsd:string ;
+    rdfs:comment "Chemin du fichier source"@fr .
+
+:startLine a owl:DatatypeProperty ;
+    rdfs:domain :CodeElement ;
+    rdfs:range xsd:integer ;
+    rdfs:comment "Ligne de début"@fr .
+
+:endLine a owl:DatatypeProperty ;
+    rdfs:domain :CodeElement ;
+    rdfs:range xsd:integer ;
+    rdfs:comment "Ligne de fin"@fr .
+
+# Métadonnées du code
+:signature a owl:DatatypeProperty ;
+    rdfs:domain :CodeElement ;
+    rdfs:range xsd:string ;
+    rdfs:comment "Signature de la fonction/subroutine"@fr .
+
+:documentation a owl:DatatypeProperty ;
+    rdfs:domain :CodeElement ;
+    rdfs:range xsd:string ;
+    rdfs:comment "Documentation extraite des commentaires"@fr .
+
+:complexity a owl:DatatypeProperty ;
+    rdfs:domain :CodeElement ;
+    rdfs:range xsd:integer ;
+    rdfs:comment "Complexité cyclomatique"@fr .
+
+:performanceProfile a owl:DatatypeProperty ;
+    rdfs:domain :CodeElement ;
+    rdfs:range xsd:string ;
+    rdfs:comment "Profil de performance (temps CPU, mémoire)"@fr .
+
+# Embeddings et index
+:embedding a owl:DatatypeProperty ;
+    rdfs:domain :CodeElement ;
+    rdfs:range xsd:string ;
+    rdfs:comment "Vecteur d'embedding pour le RAG"@fr .
+
+:semanticHash a owl:DatatypeProperty ;
+    rdfs:domain :CodeElement ;
+    rdfs:range xsd:string ;
+    rdfs:comment "Hash sémantique pour déduplication"@fr .
+
+:lastModified a owl:DatatypeProperty ;
+    rdfs:domain :CodeElement ;
+    rdfs:range xsd:dateTime ;
+    rdfs:comment "Date de dernière modification"@fr .
+
+# Métriques spécifiques
+:loopDepth a owl:DatatypeProperty ;
+    rdfs:domain :CodeBlock ;
+    rdfs:range xsd:integer ;
+    rdfs:comment "Profondeur d'imbrication des boucles"@fr .
+
+:memoryAccess a owl:DatatypeProperty ;
+    rdfs:domain :CodeBlock ;
+    rdfs:range xsd:string ;
+    rdfs:comment "Pattern d'accès mémoire (stride, random, etc.)"@fr .
+
+:parallelizationLevel a owl:DatatypeProperty ;
+    rdfs:domain :CodeElement ;
+    rdfs:range xsd:string ;
+    rdfs:comment "Niveau de parallélisation (none, OpenMP, MPI, hybrid)"@fr .
+
+# ===============================
+# INSTANCES D'EXEMPLE
+# ===============================
+
+:SCFMainLoop a :Subroutine ;
+    :implements :SCFCycle ;
+    :hasPattern :ParallelPattern ;
+    :signature "subroutine scf_loop(density, energy, converged)" ;
+    :filePath "src/scf/scf_main.f90" ;
+    :startLine 150 ;
+    :endLine 450 .
+
+:DensityMixing a :Module ;
+    :relatedConcept :ElectronDensity ;
+    :hasOptimization :VectorizationCandidate ;
+    :documentation "Module for density mixing algorithms" .
+
+# ===============================
+# EXTENSION POUR FICHIERS README
+# ===============================
+
+# Nouvelles classes pour la documentation
+:DocumentationElement a owl:Class ;
+    rdfs:subClassOf :CodeElement ;
+    rdfs:comment "Élément de documentation (README, guides, etc.)"@fr .
+
+:ReadmeFile a owl:Class ;
+    rdfs:subClassOf :DocumentationElement ;
+    rdfs:comment "Fichier README (markdown, txt, rst)"@fr .
+
+:DocumentationSection a owl:Class ;
+    rdfs:subClassOf :DocumentationElement ;
+    rdfs:comment "Section dans un document (titre, paragraphe, liste)"@fr .
+
+:CodeExample a owl:Class ;
+    rdfs:subClassOf :DocumentationElement ;
+    rdfs:comment "Exemple de code dans la documentation"@fr .
+
+:APIDocumentation a owl:Class ;
+    rdfs:subClassOf :DocumentationElement ;
+    rdfs:comment "Documentation d'API ou d'interface"@fr .
+
+:Tutorial a owl:Class ;
+    rdfs:subClassOf :DocumentationElement ;
+    rdfs:comment "Tutoriel ou guide d'utilisation"@fr .
+
+:InstallationGuide a owl:Class ;
+    rdfs:subClassOf :DocumentationElement ;
+    rdfs:comment "Guide d'installation et de configuration"@fr .
+
+# Types de sections spécifiques
+:SectionType a owl:Class ;
+    rdfs:comment "Type de section dans un README"@fr .
+
+:IntroductionSection a owl:Class ;
+    rdfs:subClassOf :SectionType ;
+    rdfs:comment "Section d'introduction/présentation"@fr .
+
+:InstallationSection a owl:Class ;
+    rdfs:subClassOf :SectionType ;
+    rdfs:comment "Section d'installation"@fr .
+
+:UsageSection a owl:Class ;
+    rdfs:subClassOf :SectionType ;
+    rdfs:comment "Section d'utilisation/exemples"@fr .
+
+:APISection a owl:Class ;
+    rdfs:subClassOf :SectionType ;
+    rdfs:comment "Section de référence API"@fr .
+
+:TroubleshootingSection a owl:Class ;
+    rdfs:subClassOf :SectionType ;
+    rdfs:comment "Section de dépannage"@fr .
+
+:ContributionSection a owl:Class ;
+    rdfs:subClassOf :SectionType ;
+    rdfs:comment "Section pour contribuer au projet"@fr .
+
+# ===============================
+# NOUVELLES PROPRIÉTÉS D'OBJET
+# ===============================
+
+# Relations entre documentation et code
+:documents a owl:ObjectProperty ;
+    rdfs:domain :DocumentationElement ;
+    rdfs:range :CodeElement ;
+    rdfs:comment "Documente un élément de code"@fr .
+
+:exemplifies a owl:ObjectProperty ;
+    rdfs:domain :CodeExample ;
+    rdfs:range :CodeElement ;
+    rdfs:comment "Exemple illustrant un élément de code"@fr .
+
+:referencesModule a owl:ObjectProperty ;
+    rdfs:domain :DocumentationElement ;
+    rdfs:range :Module ;
+    rdfs:comment "Référence un module Fortran"@fr .
+
+:referencesFunction a owl:ObjectProperty ;
+    rdfs:domain :DocumentationElement ;
+    rdfs:range :Function ;
+    rdfs:comment "Référence une fonction"@fr .
+
+:explainsPhysics a owl:ObjectProperty ;
+    rdfs:domain :DocumentationElement ;
+    rdfs:range :PhysicalConcept ;
+    rdfs:comment "Explique un concept physique"@fr .
+
+# Relations structurelles documentation
+:hasSection a owl:ObjectProperty ;
+    rdfs:domain :ReadmeFile ;
+    rdfs:range :DocumentationSection ;
+    rdfs:comment "Contient une section"@fr .
+
+:hasSectionType a owl:ObjectProperty ;
+    rdfs:domain :DocumentationSection ;
+    rdfs:range :SectionType ;
+    rdfs:comment "Type de la section"@fr .
+
+:precedesSection a owl:ObjectProperty ;
+    rdfs:domain :DocumentationSection ;
+    rdfs:range :DocumentationSection ;
+    rdfs:comment "Section précédente dans l'ordre"@fr .
+
+:linksToExternal a owl:ObjectProperty ;
+    rdfs:domain :DocumentationElement ;
+    rdfs:range :DocumentationElement ;
+    rdfs:comment "Lien vers documentation externe"@fr .
+
+# Nouvelle classe pour les fonctions internes
+:InternalFunction a owl:Class ;
+    rdfs:subClassOf :Function ;
+    rdfs:comment "Fonction interne définie après CONTAINS"@fr .
+
+:InternalSubroutine a owl:Class ;
+    rdfs:subClassOf :Subroutine ;
+    rdfs:comment "Subroutine interne définie après CONTAINS"@fr .
+
+# Nouvelle relation spécifique
+:hasInternalFunction a owl:ObjectProperty ;
+    rdfs:subPropertyOf :containedIn ;
+    rdfs:domain :CodeElement ;
+    rdfs:range :InternalFunction ;
+    rdfs:comment "Contient une fonction interne"@fr .
+
+# Propriété pour marquer le niveau d'imbrication
+:nestingLevel a owl:DatatypeProperty ;
+    rdfs:domain :CodeElement ;
+    rdfs:range xsd:integer ;
+    rdfs:comment "Niveau d'imbrication (0=top-level, 1=interne, etc.)"@fr .
+
+# ===============================
+# NOUVELLES PROPRIÉTÉS DE DONNÉES
+# ===============================
+
+# Métadonnées du fichier README
+:markdownFormat a owl:DatatypeProperty ;
+    rdfs:domain :ReadmeFile ;
+    rdfs:range xsd:string ;
+    rdfs:comment "Format du fichier (markdown, rst, txt)"@fr .
+
+:headingLevel a owl:DatatypeProperty ;
+    rdfs:domain :DocumentationSection ;
+    rdfs:range xsd:integer ;
+    rdfs:comment "Niveau de titre (1-6)"@fr .
+
+:sectionTitle a owl:DatatypeProperty ;
+    rdfs:domain :DocumentationSection ;
+    rdfs:range xsd:string ;
+    rdfs:comment "Titre de la section"@fr .
+
+:textContent a owl:DatatypeProperty ;
+    rdfs:domain :DocumentationElement ;
+    rdfs:range xsd:string ;
+    rdfs:comment "Contenu textuel de la section"@fr .
+
+:codeLanguage a owl:DatatypeProperty ;
+    rdfs:domain :CodeExample ;
+    rdfs:range xsd:string ;
+    rdfs:comment "Langage du code d'exemple (fortran, bash, python)"@fr .
+
+:exampleCode a owl:DatatypeProperty ;
+    rdfs:domain :CodeExample ;
+    rdfs:range xsd:string ;
+    rdfs:comment "Code source de l'exemple"@fr .
+
+# Métadonnées pour l'indexation
+:keywords a owl:DatatypeProperty ;
+    rdfs:domain :DocumentationElement ;
+    rdfs:range xsd:string ;
+    rdfs:comment "Mots-clés extraits du texte"@fr .
+
+:readabilityScore a owl:DatatypeProperty ;
+    rdfs:domain :DocumentationElement ;
+    rdfs:range xsd:decimal ;
+    rdfs:comment "Score de lisibilité du texte"@fr .
+
+:completeness a owl:DatatypeProperty ;
+    rdfs:domain :DocumentationElement ;
+    rdfs:range xsd:decimal ;
+    rdfs:comment "Score de complétude de la documentation"@fr .
+
+:upToDate a owl:DatatypeProperty ;
+    rdfs:domain :DocumentationElement ;
+    rdfs:range xsd:boolean ;
+    rdfs:comment "Documentation à jour par rapport au code"@fr .
+
+# Liens et références
+:externalURL a owl:DatatypeProperty ;
+    rdfs:domain :DocumentationElement ;
+    rdfs:range xsd:anyURI ;
+    rdfs:comment "URL externe référencée"@fr .
+
+:citationInfo a owl:DatatypeProperty ;
+    rdfs:domain :DocumentationElement ;
+    rdfs:range xsd:string ;
+    rdfs:comment "Information de citation (articles, DOI)"@fr .
+
+# ===============================
+# MÉTRIQUES POUR LE RAG
+# ===============================
+
+:DocumentationQuality a owl:Class ;
+    rdfs:subClassOf :QualityMetric ;
+    rdfs:comment "Métrique de qualité de la documentation"@fr .
+
+:CoverageGap a owl:Class ;
+    rdfs:subClassOf :DocumentationQuality ;
+    rdfs:comment "Élément de code non documenté"@fr .
+
+:OutdatedDoc a owl:Class ;
+    rdfs:subClassOf :DocumentationQuality ;
+    rdfs:comment "Documentation obsolète"@fr .
+
+:BrokenExample a owl:Class ;
+    rdfs:subClassOf :DocumentationQuality ;
+    rdfs:comment "Exemple de code non fonctionnel"@fr .
+
+# ===============================
+# INSTANCES D'EXEMPLE
+# ===============================
+
+:MainReadme a :ReadmeFile ;
+    :filePath "README.md" ;
+    :markdownFormat "markdown" ;
+    :lastModified "2024-01-15T10:30:00"^^xsd:dateTime ;
+    :hasSection :IntroSection, :InstallSection, :UsageSection .
+
+:IntroSection a :DocumentationSection ;
+    :hasSectionType :IntroductionSection ;
+    :sectionTitle "BigDFT - Ab initio simulations" ;
+    :headingLevel 1 ;
+    :textContent "BigDFT is a DFT massively parallel electronic structure code..." ;
+    :explainsPhysics :DFTConcept ;
+    :keywords "DFT, electronic structure, wavelets" .
+
+:InstallSection a :DocumentationSection ;
+    :hasSectionType :InstallationSection ;
+    :sectionTitle "Installation" ;
+    :headingLevel 2 ;
+    :precedesSection :UsageSection .
+
+:UsageSection a :DocumentationSection ;
+    :hasSectionType :UsageSection ;
+    :sectionTitle "Basic Usage" ;
+    :headingLevel 2 ;
+    :containedIn :ScfExample .
+
+:ScfExample a :CodeExample ;
+    :codeLanguage "fortran" ;
+    :exampleCode "call scf_loop(density, energy, converged)" ;
+    :exemplifies :SCFMainLoop ;
+    :documents :SCFCycle .
