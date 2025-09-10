@@ -25,12 +25,12 @@ from pydantic import BaseModel
 from tenacity import retry, wait_random_exponential, stop_after_attempt, retry_if_exception_type
 
 from agent.KEY import LOCAL_MODEL_PATH
-from agent.src.providers.local_CEA_API import LLM_CEA
+#from agent.src.providers.local_CEA_API import LLM_CEA
 from agent.src.types.interfaces import LLMProvider
 import openai
 from anthropic import Anthropic
 
-from CONSTANT import CLAUDE_MAX_TOKEN
+from ...CONSTANT import CLAUDE_MAX_TOKEN
 
 
 #  Installation pour le provider local :

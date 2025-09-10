@@ -8,8 +8,8 @@
     ------------------------------------------
     """
 
-from utils.anthropic_setup import get_anthropic_key
-from utils.openai_setup import get_openai_key
+from .utils.anthropic_setup import get_anthropic_key
+from .utils.openai_setup import get_openai_key
 
 CLAUDE_KEY = get_anthropic_key()
 OPENAI_KEY = get_openai_key()
