@@ -1,8 +1,27 @@
-### Quick Guide: Interacting with the OntoRAG Agent in your Notebook
+# Quick Guide: Interacting with the OntoRAG Agent in your Notebook
+
+NOTE : Actually, the jupyter parser is not functional, so only f90 files works
 
 This guide summarizes the essential commands for using the RAG agent via the `%rag` magic command.
+### HOW TO
+After README.md installation instructions
+```bash
+source [your_path]/llm-hackathon-2025/venv/bin/activate
+cd [your_path]/llm-hackathon-2025/
+pip install ipykernel
+python -m ipykernel install --user --name=hackathon-venv --display-name="Python (Hackathon Venv)"
+# start jupyter lab
+jupyter lab
+```
 
-#### **Step 1: Initialization (Once per session)**
+#### Change the notebook kernel:
+At the top right, you’ll probably see “Python 3 (ipykernel)” or the name of your old kernel. Click on it.
+
+From the list that appears, select the NEW kernel: “Python (Hackathon Venv)”.
+
+The notebook will restart and connect to the correct interpreter.
+
+### **Step 1: Initialization (Once per session)**
 
 1.  **Load the Magic Command**
     Run this command to enable the `%rag` tool.
@@ -15,8 +34,10 @@ This guide summarizes the essential commands for using the RAG agent via the `%r
     ```ipython
     # Define `documents_info` variable
     documents_info = [
-    {"filepath": "/home/yopla/PycharmProjects/llm-hackathon-2025/2-aiengine/OntoFlow/test_folder/PSbox.f90", "project_name": "BigDFT", "version": "1.9"},
+    {"filepath": "[your_path]/llm-hackathon-2025/2-aiengine/OntoFlow/test_folder/PSbox.f90", "project_name": "BigDFT", "version": "1.9"},
     # Ajoutez ici d'autres documents si vous le souhaitez]
+    
+    # Rag indexation
     %rag /add_docs documents_info
     ```
 
@@ -29,7 +50,7 @@ Use this mode for complex questions that require a dialogue.
 *   **Start a Conversation**: `%rag /agent <your question>`
     > Clears the previous memory and asks your first question.
     ```ipython
-    %rag /agent Explain how molecular dynamics works in BigDFT.
+    %rag /agent A quoi sert la subroutine reduce_energies.
     ```
 
 *   **Reply to the Agent**: `%rag /agent_reply <your answer>`
