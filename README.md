@@ -38,3 +38,22 @@ python agent/test_agent_fortran.py --program-path test_folder/ --idea test/idea.
     - /agent/agent/Onto_wa_rag/Bibliotheque_d_ontologie somes files with ttl ontology (if you pass this file in a LLM, he can construct another)
     - /agent/agent/Onto_wa_rag/main_app.py is a CLI for ontorag but not used by agent
 
+# Jupyter env
+    
+```bash
+    
+pip install ipykernel
+python -m ipykernel install --user --name=hackathon-venv --display-name="Python (Hackathon Venv)"
+```
+
+Changez le noyau de votre notebook.
+
+    Ouvrez votre fichier .ipynb.
+
+    En haut à droite, vous verrez probablement "Python 3 (ipykernel)" ou le nom de votre ancien noyau. Cliquez dessus.
+
+    Dans la liste qui apparaît, sélectionnez le NOUVEAU noyau : "Python (Hackathon Venv)".
+
+    Le notebook va redémarrer et se connecter au bon interpréteur.
+
+  

@@ -57,3 +57,4 @@ scikit-learn
 pykeen
 fprettify
 rapidfuzz
+nest-asyncio

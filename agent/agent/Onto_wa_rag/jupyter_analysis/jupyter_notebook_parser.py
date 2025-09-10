@@ -417,6 +417,75 @@ def get_jupyter_analyzer() -> JupyterAnalysisEngine:
     """
     return JupyterAnalysisEngine()
 
+# -------------------- CHUNKER -------------------------
+
+def estimate_tokens(text: str, chars_per_token: int = 4) -> int:
+    """
+    Approxime le nombre de tokens en fonction du nombre de caractères.
+    - Par défaut: 1 token ≈ 4 caractères
+    - Pour du texte mixte code/markdown, 1 token ≈ 5 caractères est parfois plus réaliste.
+    """
+    return max(1, len(text) // chars_per_token)
+
+
+def chunk_notebook_entities(
+    entities: List,
+    target_size: int = 400,
+    max_size: int = 800,
+    chars_per_token: int = 4  # 4 for english, 5 for french
+) -> List[Dict]:
+    """
+    Construit des chunks optimisés à partir des entités d'un notebook.
+    Approximation des tokens par longueur des caractères.
+    """
+
+    chunks = []
+    current_chunk = []
+    current_tokens = 0
+
+    for entity in entities:
+        if entity.entity_type == "notebook":
+            continue
+
+        text = entity.source_code or ""
+        if not text.strip():
+            continue
+
+        tokens = estimate_tokens(text, chars_per_token)
+
+        # Cellule énorme → chunk isolé
+        if tokens > max_size:
+            if current_chunk:
+                chunks.append({
+                    "content": "\n\n".join(current_chunk),
+                    "tokens": current_tokens
+                })
+                current_chunk, current_tokens = [], 0
+
+            chunks.append({"content": text, "tokens": tokens})
+            continue
+
+        # Sinon on essaie d’ajouter au chunk courant
+        if current_tokens + tokens <= target_size:
+            current_chunk.append(text)
+            current_tokens += tokens
+        else:
+            if current_chunk:
+                chunks.append({
+                    "content": "\n\n".join(current_chunk),
+                    "tokens": current_tokens
+                })
+            current_chunk = [text]
+            current_tokens = tokens
+
+    if current_chunk:
+        chunks.append({
+            "content": "\n\n".join(current_chunk),
+            "tokens": current_tokens
+        })
+
+    return chunks
+
 
 if __name__ == "__main__":
 
@@ -428,7 +497,7 @@ if __name__ == "__main__":
     # avec des cellules de code (fonctions, classes, imports) et de markdown.
 
     analyzer = get_jupyter_analyzer()
-    filepath = '/home/yopla/PycharmProjects/ci-agent/agent/Onto_wa_rag/jupyter_analysis/test.ipynb'
+    filepath = '/home/yopla/PycharmProjects/llm-hackathon-2025/2-aiengine/OntoFlow/agent/agent/Onto_wa_rag/jupyter_analysis/test.ipynb'
 
     # Obtenir toutes les entités structurées
     entities, raw_content = analyzer.analyze_file(filepath)
@@ -452,3 +521,6 @@ if __name__ == "__main__":
             print(f"Appels   : {calls}")
         if entity.source_code:
             print(f"Source   : {entity.source_code}")
+
+    chunk = chunk_notebook_entities(entities)
+    print(chunk[0])

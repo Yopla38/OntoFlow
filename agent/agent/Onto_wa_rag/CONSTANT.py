@@ -15,7 +15,7 @@ API_KEY_PATH = "/home/yopla/Documents/keys/"
 STORAGE_DIR = "/home/yopla/test_agent/onto_RAG"  # Zone de stockage du RAG (chunks, hopfields network, ...)
 CHUNK_SIZE = 2000  # Taille de découpage des fichiers ou entités
 CHUNK_OVERLAP = 0  # Pour le code: pas de recouvrement des chunks
-ONTOLOGY_PATH_TTL = "/home/yopla/PycharmProjects/ci-agent/agent/agent/Onto_wa_rag/Bibliotheque_d_ontologie/bigdft_ontologie_v2.ttl"
+ONTOLOGY_PATH_TTL = "/home/yopla/PycharmProjects/llm-hackathon-2025/2-aiengine/OntoFlow/agent/agent/Onto_wa_rag/Bibliotheque_d_ontologie/bigdft_ontologie_ipynb.ttl"
 MAX_RESULTS = 20  # Nombre de passages retrounés pour une recherche
 MAX_CONCURRENT = 5  # Nombre thread utilisés pour l'ajout de document
 

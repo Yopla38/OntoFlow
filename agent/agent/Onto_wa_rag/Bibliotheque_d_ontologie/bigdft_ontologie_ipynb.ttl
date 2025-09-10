@@ -1,0 +1,195 @@
+@prefix :        <http://bigdft.org/ontology#> .
+@prefix owl:     <http://www.w3.org/2002/07/owl#> .
+@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+
+@prefix doc:     <http://bigdft.org/documentation#> .
+@prefix phys:    <http://quantum-chemistry.org/dft#> .
+@prefix algo:    <http://bigdft.org/algorithm#> .
+@prefix perf:    <http://bigdft.org/performance#> .
+
+#################################################################
+# 1. METADATA DE L'ONTOLOGIE
+#################################################################
+:BigDFTOntology
+        a               owl:Ontology ;
+        rdfs:label      "BigDFT Unified Ontology for Python Documentation"@en ;
+        rdfs:comment    "Unified ontology for indexing physics, algorithms, and Python API usage concepts from BigDFT tutorials and documentation. Optimized for Retrieval-Augmented Generation (RAG) systems."@en ;
+        owl:versionInfo "4.0" .
+
+#################################################################
+# 2. CONCEPTS DE DOCUMENTATION ET D'USAGE (namespace doc:)
+#################################################################
+doc:Document a owl:Class ;
+    rdfs:label "Document"@en, "Document"@fr ;
+    rdfs:comment "A document providing information about BigDFT."@en .
+
+doc:Tutorial a owl:Class ;
+    rdfs:subClassOf doc:Document ;
+    rdfs:label "Tutorial"@en, "Tutoriel"@fr ;
+    rdfs:comment "A step-by-step guide to perform a specific task using the Python API."@en .
+
+doc:Lesson a owl:Class ;
+    rdfs:subClassOf doc:Document ;
+    rdfs:label "Lesson"@en, "Leçon"@fr ;
+    rdfs:comment "A document explaining a broader theoretical concept and its implementation in BigDFT."@en .
+
+doc:Example a owl:Class ;
+    rdfs:subClassOf doc:Document ;
+    rdfs:label "Example"@en, "Exemple"@fr ;
+    rdfs:comment "A focused code snippet demonstrating a specific feature."@en .
+
+doc:UsageConcept a owl:Class;
+    rdfs:label "Usage Concept"@en, "Concept d'Utilisation"@fr .
+
+doc:CalculationSetup a owl:Class;
+    rdfs:subClassOf doc:UsageConcept ;
+    rdfs:label "Calculation Setup"@en, "Configuration de Calcul"@fr .
+
+doc:PostProcessing a owl:Class;
+    rdfs:subClassOf doc:UsageConcept ;
+    rdfs:label "Post-Processing"@en, "Post-Traitement"@fr .
+
+doc:Visualization a owl:Class;
+    rdfs:subClassOf doc:PostProcessing ;
+    rdfs:label "Visualization"@en, "Visualisation"@fr .
+
+doc:DataExtraction a owl:Class;
+    rdfs:subClassOf doc:PostProcessing ;
+    rdfs:label "Data Extraction"@en, "Extraction de Données"@fr .
+
+doc:PyBigDFTObject a owl:Class;
+    rdfs:subClassOf doc:UsageConcept ;
+    rdfs:label "PyBigDFT API Object"@en, "Objet de l'API PyBigDFT"@fr ;
+    rdfs:comment "Represents a key class or object in the PyBigDFT Python API."@en .
+
+doc:System a doc:PyBigDFTObject; rdfs:label "System" .
+doc:Fragment a doc:PyBigDFTObject; rdfs:label "Fragment" .
+doc:Inputfile a doc:PyBigDFTObject; rdfs:label "Inputfile" .
+doc:Calculator a doc:PyBigDFTObject; rdfs:label "Calculator" .
+doc:Logfile a doc:PyBigDFTObject; rdfs:label "Logfile" .
+
+#################################################################
+# 3. CONCEPTS PHYSIQUES (namespace phys:) - Agnostique au langage
+#################################################################
+phys:PhysicalConcept a owl:Class ;
+    rdfs:label "Physical Concept"@en, "Concept Physique"@fr .
+
+phys:DFTConcept a owl:Class ;
+    rdfs:subClassOf phys:PhysicalConcept ;
+    rdfs:label "DFT Concept"@en .
+
+phys:WaveFunction a owl:Class ;
+    rdfs:subClassOf phys:DFTConcept ;
+    rdfs:label "Wavefunction"@en ;
+    rdfs:comment "Mathematical function representing the quantum state of a system."@en .
+
+phys:ElectronDensity a owl:Class ;
+    rdfs:subClassOf phys:DFTConcept ;
+    rdfs:label "Electron Density"@en ;
+    rdfs:comment "Spatial density of electrons in a quantum system, often represented on a numerical grid."@en .
+
+phys:ExchangeCorrelation a owl:Class ;
+    rdfs:subClassOf phys:DFTConcept ;
+    rdfs:label "Exchange-Correlation Functional"@en ;
+    rdfs:comment "The component of DFT that models complex electron interactions (e.g., GGA, LDA)."@en .
+
+phys:BasisSet a owl:Class ;
+    rdfs:subClassOf phys:DFTConcept ;
+    rdfs:label "Basis Set"@en ;
+    rdfs:comment "A set of functions used to represent electronic orbitals (e.g., wavelets, gaussians)."@en .
+
+phys:Pseudopotential a owl:Class ;
+    rdfs:subClassOf phys:DFTConcept ;
+    rdfs:label "Pseudopotential"@en ;
+    rdfs:comment "An effective potential that simplifies core electron interactions, allowing for calculations on valence electrons only."@en .
+
+phys:SCFCycle a owl:Class ;
+    rdfs:subClassOf phys:DFTConcept ;
+    rdfs:label "Self-Consistent Field (SCF) Cycle"@en ;
+    rdfs:comment "The iterative procedure for solving the Kohn-Sham equations until convergence is reached."@en .
+
+phys:MolecularDynamics a owl:Class ;
+    rdfs:subClassOf phys:PhysicalConcept ;
+    rdfs:label "Molecular Dynamics"@en ;
+    rdfs:comment "A method for simulating the physical motion of atoms and molecules over time."@en .
+
+phys:GeometryOptimization a owl:Class;
+    rdfs:subClassOf phys:PhysicalConcept ;
+    rdfs:label "Geometry Optimization"@en ;
+    rdfs:comment "A process to find the minimum energy conformation of a molecular system."@en .
+
+#################################################################
+# 4. CONCEPTS ALGORITHMIQUES (namespace algo:) - Agnostique au langage
+#################################################################
+algo:AlgorithmicConcept a owl:Class ;
+    rdfs:label "Algorithmic Concept"@en, "Concept Algorithmique"@fr .
+
+algo:MatrixOperation a owl:Class ;
+    rdfs:subClassOf algo:AlgorithmicConcept ;
+    rdfs:label "Matrix Operation"@en ;
+    rdfs:comment "Operations involving matrices (e.g., multiplication, inversion, diagonalization), typically using libraries like NumPy/SciPy."@en .
+
+algo:FFTOperation a owl:Class ;
+    rdfs:subClassOf algo:AlgorithmicConcept ;
+    rdfs:label "FFT Operation"@en ;
+    rdfs:comment "Fast Fourier Transform applied to data on regular grids."@en .
+
+algo:PoissonSolver a owl:Class ;
+    rdfs:subClassOf algo:AlgorithmicConcept ;
+    rdfs:label "Poisson Solver"@en ;
+    rdfs:comment "Numerical solution of the Poisson equation, for calculating the electrostatic potential."@en .
+
+algo:LinearScaling a owl:Class ;
+    rdfs:subClassOf algo:AlgorithmicConcept ;
+    rdfs:label "Linear Scaling Method"@en ;
+    rdfs:comment "An algorithm whose computational cost scales linearly with the number of atoms, enabling calculations on very large systems."@en .
+
+#################################################################
+# 5. CONCEPTS DE PERFORMANCE (namespace perf:) - Orienté utilisateur
+#################################################################
+perf:PerformanceConcept a owl:Class ;
+    rdfs:label "Performance Concept"@en, "Concept de Performance"@fr .
+
+perf:Parallelization a owl:Class ;
+    rdfs:subClassOf perf:PerformanceConcept ;
+    rdfs:label "Parallelization"@en ;
+    rdfs:comment "Describes how to run calculations in parallel (e.g., using MPI) to speed them up by distributing the work."@en .
+
+perf:MemoryManagement a owl:Class ;
+    rdfs:subClassOf perf:PerformanceConcept ;
+    rdfs:label "Memory Management"@en ;
+    rdfs:comment "Concepts related to controlling and optimizing memory usage for large calculations."@en .
+
+perf:Vectorization a owl:Class ;
+    rdfs:subClassOf perf:PerformanceConcept ;
+    rdfs:label "Vectorization"@en ;
+    rdfs:comment "Improving performance by using array-based operations (e.g., in NumPy) instead of explicit loops in Python."@en .
+
+#################################################################
+# 6. PROPRIETES (RELATIONS)
+#################################################################
+doc:hasVersion a owl:DatatypeProperty ;
+    rdfs:domain doc:Document ;
+    rdfs:range xsd:string .
+
+doc:teaches a owl:ObjectProperty ;
+    rdfs:domain doc:Document ;
+    rdfs:range phys:PhysicalConcept ;
+    rdfs:label "teaches"@en, "enseigne"@fr .
+
+doc:explains a owl:ObjectProperty ;
+    rdfs:domain doc:Document ;
+    rdfs:range algo:AlgorithmicConcept ;
+    rdfs:label "explains"@en, "explique"@fr .
+
+doc:showsHowTo a owl:ObjectProperty ;
+    rdfs:domain doc:Document ;
+    rdfs:range doc:UsageConcept ;
+    rdfs:label "shows how to"@en, "montre comment"@fr .
+
+doc:discusses a owl:ObjectProperty ;
+    rdfs:domain doc:Document ;
+    rdfs:range perf:PerformanceConcept ;
+    rdfs:label "discusses"@en, "aborde"@fr .
