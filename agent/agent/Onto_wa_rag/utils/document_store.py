@@ -415,7 +415,6 @@ class DocumentStore:
 
         # Si aucun chunk sauvegardé, recréer les chunks
 
-
     async def load_document_chunks(self, document_id: str) -> bool:
         """
         Charge les chunks d'un document depuis son fichier avec vérification et réparation

@@ -20,6 +20,8 @@ from pathlib import Path
 from datetime import datetime
 import asyncio
 
+import aiohttp
+
 from .utils.clean_fortran_code_v2 import nettoyer_commentaires_fortran
 from .context_provider.query_router import IntelligentQueryRouter
 from .fortran_analysis.providers.Fortran_agent import FortranAgent
@@ -93,26 +95,52 @@ class OntoDocumentProcessor(DocumentProcessor):
 
     async def _extract_text_with_metadata(self, filepath: str) -> Tuple[str, Dict[str, Any]]:
 
-        extension = Path(filepath).suffix.lower()
-        file_type = self.file_extensions.get(extension, 'text')
-        metadata = {
-            'file_size': os.path.getsize(filepath),
-            'file_type': file_type,
-            'modification_date': datetime.fromtimestamp(os.path.getmtime(filepath)).isoformat(),
-            'extraction_date': datetime.now().isoformat(),
-        }
-        if file_type in self.direct_read_types:
-            print(f"📖 Lecture directe du fichier {file_type}: {Path(filepath).name}")
+        if filepath.startswith(("http://", "https://")):
+            # === Cas URL ===
+            url = filepath
+            print(f"🌍 Lecture depuis URL: {url}")
+
             try:
-                with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
-                    content = f.read()
-                return content, metadata
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(url) as response:
+                        response.raise_for_status()
+                        content = await response.text(errors="ignore")
+
+                        # Métadonnées depuis l'en-tête HTTP si dispo
+                        metadata = {
+                            "source": url,
+                            "file_size": int(response.headers.get("Content-Length", len(content))),
+                            "file_type": response.headers.get("Content-Type", "text/html"),
+                            "modification_date": response.headers.get("Last-Modified", datetime.now().isoformat()),
+                            "extraction_date": datetime.now().isoformat(),
+                        }
+
+                        return content, metadata
+
             except Exception as e:
-                print(f"❌ Erreur lors de la lecture de {filepath}: {e}")
+                print(f"❌ Erreur lors de la lecture de l'URL {url}: {e}")
                 raise
         else:
-            print(f"🔄 Conversion via MarkdownConverter: {Path(filepath).name}")
-            return await super()._extract_text_with_metadata(filepath)
+            extension = Path(filepath).suffix.lower()
+            file_type = self.file_extensions.get(extension, 'text')
+            metadata = {
+                'file_size': os.path.getsize(filepath),
+                'file_type': file_type,
+                'modification_date': datetime.fromtimestamp(os.path.getmtime(filepath)).isoformat(),
+                'extraction_date': datetime.now().isoformat(),
+            }
+            if file_type in self.direct_read_types:
+                print(f"📖 Lecture directe du fichier {file_type}: {Path(filepath).name}")
+                try:
+                    with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
+                        content = f.read()
+                    return content, metadata
+                except Exception as e:
+                    print(f"❌ Erreur lors de la lecture de {filepath}: {e}")
+                    raise
+            else:
+                print(f"🔄 Conversion via MarkdownConverter: {Path(filepath).name}")
+                return await super()._extract_text_with_metadata(filepath)
 
     async def process_document(self, filepath: str, document_id: str = None, additional_metadata: dict = None, processing_options: dict = None):
         if document_id is None:
@@ -1064,10 +1092,11 @@ class OntoRAG:
         if not await self._ensure_initialized():
             return False
 
-        filepath = str(Path(filepath).resolve())
-        if not os.path.exists(filepath):
-            self.logger.error(f"Fichier non trouvé: {filepath}")
-            return False
+        if not (filepath.startswith("http://") or filepath.startswith("https://")):
+            filepath = str(Path(filepath).resolve())
+            if not os.path.exists(filepath):
+                self.logger.error(f"Fichier non trouvé: {filepath}")
+                return False
 
         doc_id = self._get_document_id(filepath)
 
@@ -1538,6 +1567,7 @@ class OntoRAG:
                                 filepath, doc_info, force_update, processing_options=processing_options
                             )
                     else:
+
                         # Pour les autres fichiers, traitement standard
                         success = await self.add_document(
                             filepath,
