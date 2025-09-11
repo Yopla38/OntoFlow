@@ -31,14 +31,26 @@ import openai
 from anthropic import Anthropic
 from transformers import AutoTokenizer, AutoModel
 
-from ..CONSTANT import API_KEY_PATH, LOCAL_EMBEDDING_PATH, LANGUAGE
+from ..CONSTANT import API_KEY_PATH, EMBEDDING_MODEL, LOCAL_EMBEDDING_PATH, LANGUAGE, OLLAMA_BASE_URL
 from ..provider.get_key import get_openai_key
 
 #  Installation pour le provider local :
 # https: // forums.developer.nvidia.com / t / installing - cuda - on - ubuntu - 22 - 04 - rxt4080 - laptop / 292899
 # CMAKE_ARGS="-DGGML_CUDA=on -DGGML_CUDA_FORCE_CUBLAS=on -DLLAVA_BUILD=off -DCMAKE_CUDA_ARCHITECTURES=native" FORCE_CMAKE=1 pip install llama-cpp-python --no-cache-dir --force-reinstall --upgrade
 
-CLIENT_OPENAI = openai.AsyncClient(api_key=get_openai_key(api_key_path=API_KEY_PATH))
+# attempt to collect openai API key
+api_key = get_openai_key(api_key_path=API_KEY_PATH)
+
+try:
+    # if no key is found, assume local deployment
+    if api_key == "":
+        CLIENT_OPENAI = openai.AsyncClient(base_url=OLLAMA_BASE_URL, api_key="ollama")
+    else:
+        CLIENT_OPENAI = openai.AsyncClient(api_key=api_key)
+finally:
+    # delete api_key from memory
+    del api_key
+
 SPECTER_PATH = LOCAL_EMBEDDING_PATH
 
 from abc import ABC, abstractmethod
@@ -272,7 +284,7 @@ class OpenAIProvider(LLMProvider):
             for i in range(0, len(texts), batch_size):
                 batch = texts[i:i + batch_size]
                 response = await self.client.embeddings.create(
-                    model="text-embedding-3-large",
+                    model=EMBEDDING_MODEL,
                     input=batch
                 )
                 batch_embeddings = [item.embedding for item in response.data]

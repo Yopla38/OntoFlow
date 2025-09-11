@@ -514,7 +514,7 @@ async def test_vision_agent():
 
     # Initialisation des composants
     llm_provider = AnthropicProvider(
-        model="claude-3-5-sonnet-20241022",
+        model=VISION_AGENT_MODEL,
         api_key=API_KEY,
         system_prompt="Tu es un expert en analyse d'images et raisonnement structuré."
     )

@@ -19,6 +19,7 @@ from datetime import datetime
 import tempfile
 import os
 
+from agent.agent.Onto_wa_rag.CONSTANT import VISION_AGENT_MODEL
 from context_provider.contextual_text_generator import logger
 from provider.llm_providers import AnthropicProvider
 from provider.Multimodal.multimodal_analyse_v3 import AdaptiveMultiAgentAnalyzer
@@ -959,7 +960,7 @@ async def test_image_analysis_agent(api_key):
 
     # Initialisation
     llm_provider = AnthropicProvider(
-        model="claude-3-5-sonnet-20241022",
+        model=VISION_AGENT_MODEL,
         api_key=api_key,
         system_prompt="Tu es un expert en analyse d'images scientifiques."
     )

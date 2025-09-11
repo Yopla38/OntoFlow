@@ -4,6 +4,7 @@ import json
 import time
 import threading
 import traceback
+from agent.agent.Onto_wa_rag.CONSTANT import LLM_MODEL
 from flask import request, jsonify, session, send_from_directory
 from werkzeug.utils import secure_filename
 
@@ -34,7 +35,7 @@ def initialize_rag_system(user_id):
         # Initialiser les providers LLM
         api_key = get_openai_key()
         llm_provider = OpenAIProvider(
-            model="gpt-4o",
+            model=LLM_MODEL,
             api_key=api_key
         )
         embedding_provider = llm_provider

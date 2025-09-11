@@ -11,7 +11,7 @@
 import logging
 import os
 
-from CONSTANT import API_KEY_PATH
+from CONSTANT import API_KEY_PATH, LLM_MODEL
 from document_analysis.src.pronoun_resolver import PydanticLLMProvider, ResolutionConfig, PronounResolver
 
 # Configuration du logging pour voir ce qu'il se passe
@@ -37,7 +37,7 @@ def run_pronoun_resolution_tests():
         logging.error(f"Erreur lors de la récupération de la clé API : {e}")
         return
 
-    openai_provider = OpenAIProvider(model="gpt-4o", api_key=api_key)
+    openai_provider = OpenAIProvider(model=LLM_MODEL, api_key=api_key)
     adapter = LLMAdapter(provider=openai_provider)
     llm_wrapper = PydanticLLMProvider(backend=adapter)
     config = ResolutionConfig(lang="fr", context_window=1000)

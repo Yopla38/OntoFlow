@@ -34,6 +34,7 @@ from datetime import datetime
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
+from agent.agent.Onto_wa_rag.CONSTANT import VISION_AGENT_MODEL
 from pydantic import BaseModel, Field
 
 from provider.llm_providers import AnthropicProvider
@@ -927,7 +928,7 @@ async def test_adaptive_multi_agent():
     """Test du système multi-agents adaptatif"""
 
     llm_provider = AnthropicProvider(
-        model="claude-3-5-sonnet-20241022",
+        model=VISION_AGENT_MODEL,
         api_key="API_KEY",
         system_prompt="Tu es un expert en analyse d'images et visualisation de données."
     )
