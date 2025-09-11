@@ -14,7 +14,10 @@ import os
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-if os.path.exists("/home/yopla/Documents/keys/"):
+# Quick and dirty hack.
+if os.path.exists("/work/keys/"):
+    API_KEY_PATH = "/work/keys/"
+elif os.path.exists("/home/yopla/Documents/keys/"):
     API_KEY_PATH = "/home/yopla/Documents/keys/"
 else:
     API_KEY_PATH = "~"
