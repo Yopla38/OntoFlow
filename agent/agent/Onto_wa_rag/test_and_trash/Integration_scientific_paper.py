@@ -22,7 +22,7 @@ import asyncio
 
 import numpy as np
 
-from CONSTANT import API_KEY_PATH, CHUNK_SIZE, CHUNK_OVERLAP, ONTOLOGY_PATH_TTL, MAX_CONCURRENT, MAX_RESULTS, \
+from CONSTANT import API_KEY_PATH, CHUNK_SIZE, CHUNK_OVERLAP, LLM_MODEL, ONTOLOGY_PATH_TTL, MAX_CONCURRENT, MAX_RESULTS, \
     STORAGE_DIR
 from ontology.classifier import OntologyClassifier
 from ontology.ontology_manager import OntologyManager
@@ -155,7 +155,7 @@ class OntoRAG:
             self,
             storage_dir: str = "ontorag_storage",
             api_key_path: str = API_KEY_PATH,
-            model: str = "gpt-4o",
+            model: str = LLM_MODEL,
             chunk_size: int = CHUNK_SIZE,
             chunk_overlap: int = CHUNK_OVERLAP,
             ontology_path: Optional[str] = None

@@ -12,6 +12,7 @@
 import asyncio
 import os
 
+from agent.agent.Onto_wa_rag.CONSTANT import LLM_MODEL
 from provider.get_key import get_openai_key
 
 from utils.rag_engine import RAGEngine
@@ -32,7 +33,7 @@ async def test_concept_classification():
     print("\n1. Initialisation du RAG existant...")
     OPENAI_KEY = get_openai_key(api_key_path=API_KEY_PATH)
     llm_provider = OpenAIProvider(
-        model="gpt-4o",
+        model=LLM_MODEL,
         api_key=OPENAI_KEY
     )
 

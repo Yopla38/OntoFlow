@@ -17,7 +17,7 @@ import torch
 # Imports nécessaires
 
 from ontology.relation_manager import RelationManager
-from CONSTANT import API_KEY_PATH
+from CONSTANT import API_KEY_PATH, LLM_MODEL
 from provider.get_key import get_openai_key
 from provider.llm_providers import OpenAIProvider
 from utils.rag_engine import RAGEngine
@@ -38,7 +38,7 @@ class HopfieldRelationTester:
         OPENAI_KEY = get_openai_key(api_key_path=API_KEY_PATH)
 
         llm_provider = OpenAIProvider(
-            model="gpt-4o",
+            model=LLM_MODEL,
             api_key=OPENAI_KEY
         )
 

@@ -26,7 +26,7 @@ from tqdm import tqdm
 from datetime import datetime
 import shutil
 
-from CONSTANT import MAX_CONCEPT_TO_DETECT, CONFIANCE, CHUNK_SIZE, CHUNK_OVERLAP, USE_SEMANTIC_CHUNKING, BLUE, BOLD, \
+from CONSTANT import LLM_MODEL, MAX_CONCEPT_TO_DETECT, CONFIANCE, CHUNK_SIZE, CHUNK_OVERLAP, USE_SEMANTIC_CHUNKING, BLUE, BOLD, \
     RESET, RED, GREEN, YELLOW
 from ontology.concept_hopfield import ConceptHopfieldClassifier
 from utils.document_processor import DocumentProcessor
@@ -107,7 +107,7 @@ class Text2KGBenchmark:
             OPENAI_KEY = get_openai_key(api_key_path=API_KEY_PATH)
 
             llm_provider = OpenAIProvider(
-                model="gpt-4o",
+                model=LLM_MODEL,
                 api_key=OPENAI_KEY
             )
 
@@ -1553,7 +1553,7 @@ class Text2KGBenchmark:
             OPENAI_KEY = get_openai_key(api_key_path=API_KEY_PATH)
 
             llm_provider = OpenAIProvider(
-                model="gpt-4o",
+                model=LLM_MODEL,
                 api_key=OPENAI_KEY
             )
 
