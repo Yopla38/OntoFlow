@@ -348,7 +348,7 @@ class OntoRAGMagic(Magics):
     """
 
         # Afficher tout
-        display(Markdown(header + response_body + sources_section + footer))
+        display(Markdown(header + response_body + sources_section))
 
     async def _display_simple_search_results(self, query: str, results: List[Dict[str, Any]]):
         """Affiche les résultats de la recherche simple de manière attractive."""
