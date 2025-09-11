@@ -51,7 +51,7 @@ async def download_file(session, url, save_path):
     print(f"✅ Saved {save_path}")
 
 
-async def main():
+async def download_documents():
     async with aiohttp.ClientSession() as session:
         tasks = []
         for doc in DOCUMENTS:
@@ -72,5 +72,5 @@ async def main():
             tasks.append(download_file(session, url, save_path))
         await asyncio.gather(*tasks)
 
-if __name__ == "__main__":
-    asyncio.run(main())
+
+asyncio.run(download_documents())

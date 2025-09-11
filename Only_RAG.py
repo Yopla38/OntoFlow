@@ -563,4 +563,7 @@ async def display_document_list(docs: List[Dict[str, Any]]):
 
 
 if __name__ == "__main__":
+    # Download documents
+    from Documents_to_index.download_localy_documentation import
+
     asyncio.run(example_usage())
