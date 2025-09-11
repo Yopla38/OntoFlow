@@ -90,7 +90,9 @@ class DocumentProcessor:
                         **(additional_metadata or {})
                     }
                 })
-            return doc_id, chunks
+        # Insérer dans le magasin de documents du RAG
+            await self._add_document_with_chunks(filepath, document_id, chunks, metadata)
+            return document_id, chunks
 
         # Sinon: traitement standard
         text_content, doc_metadata = await self._extract_text_with_metadata(filepath)
