@@ -12,6 +12,8 @@
 from curses.ascii import EM
 import os
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 if os.path.exists("/home/yopla/Documents/keys/"):
     API_KEY_PATH = "/home/yopla/Documents/keys/"
 else:
@@ -20,10 +22,9 @@ else:
 OLLAMA_BASE_URL = "http://localhost:11434/v1"
 
 # Pour Integration_fortran_RAG
-STORAGE_DIR = "/home/yopla/test_agent/onto_RAG"  # Zone de stockage du RAG (chunks, hopfields network, ...)
+STORAGE_DIR = os.path.join(BASE_DIR, "Data_onto_RAG")  # Zone de stockage du RAG (chunks, hopfields network, ...)
 CHUNK_SIZE = 2000  # Taille de découpage des fichiers ou entités
 CHUNK_OVERLAP = 0  # Pour le code: pas de recouvrement des chunks
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ONTOLOGY_PATH_TTL = os.path.join(BASE_DIR, "Bibliotheque_d_ontologie", "bigdft_ontologie_ipynb.ttl")
 MAX_RESULTS = 20  # Nombre de passages retrounés pour une recherche
 MAX_CONCURRENT = 5  # Nombre thread utilisés pour l'ajout de document
