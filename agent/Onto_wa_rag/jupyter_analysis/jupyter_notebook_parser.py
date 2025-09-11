@@ -5,7 +5,7 @@ Copyright: CEA Grenoble
 Auteur: Yoann CURE (Inspiré par), Gemini (Implémentation)
 Entité: IRIG
 Année: 2025
-Description: Parseur de qualité production pour notebooks Jupyter (.ipynb)
+Description: Parseur pour notebooks Jupyter (.ipynb)
              destiné à alimenter un système RAG.
 ------------------------------------------
 """
@@ -296,7 +296,6 @@ class CodeVisitorWithOffset(ast.NodeVisitor):
         return ast.get_source_segment(self.source_code, node) or ""
 
     def _get_call_name(self, node: ast.Call) -> Optional[str]:
-        # ... (Même logique que le précédent) ...
         func = node.func
         parts = []
         while isinstance(func, ast.Attribute):
@@ -418,6 +417,7 @@ def get_jupyter_analyzer() -> JupyterAnalysisEngine:
     return JupyterAnalysisEngine()
 
 # -------------------- CHUNKER -------------------------
+
 
 def estimate_tokens(text: str, chars_per_token: int = 4) -> int:
     """

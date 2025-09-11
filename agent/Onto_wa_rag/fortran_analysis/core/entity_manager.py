@@ -590,7 +590,6 @@ class EntityManager:
                             'entity_id': entity.entity_id,
                             'call_line': line_of_call  # <--- INFORMATION PRÉCISE
                         })
-            # ▲▲▲ FIN DE LA NOUVELLE LOGIQUE ▲▲▲
 
         await global_cache.function_calls.set(cache_key, callers, ttl=1800)
         return callers

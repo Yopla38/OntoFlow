@@ -100,14 +100,34 @@ class NotebookCodeAgent:
         self.clear_state()
         self.conversation_state['initial_idea'] = user_idea
 
-        print("🧠 Agent Planificateur : Sollicitation...")
-        rag_context = await self.rag_agent.query(user_idea, use_ontology=True)
+        print("🧠 Agent Planificateur : Analyse de la demande et consultation initiale du RAG...")
+        rag_context_result = await self.rag_agent.query(user_idea, use_ontology=True)  # Maybe we can use /agent for the first query
+        rag_context = rag_context_result.get('answer', 'Aucune information pertinente trouvée dans la documentation.')
 
-        # Le prompt est simplifié car le contexte projet est vide. Le RAG est la source de vérité.
-        improvement_prompt = f"DEMANDE UTILISATEUR: {user_idea}\nCONTEXTE RAG: {rag_context.get('answer')}\n\nTA MISSION : Décompose cette demande en tâches pour un agent développeur qui doit générer UN SEUL fichier de code Python."
+        planner_prompt = f"""
+        Tu es un chef de projet expert et un architecte logiciel spécialisé en PyBigDFT.
+        Ta mission est de créer un plan de développement détaillé pour un agent développeur afin qu'il puisse écrire un script Python complet et fonctionnel.
+
+        --- DEMANDE DE L'UTILISATEUR ---
+        {user_idea}
+        ---
+
+        --- CONTEXTE PERTINENT EXTRAIT DE LA DOCUMENTATION (RAG) ---
+        {rag_context}
+        ---
+
+        INSTRUCTIONS PRÉCISES POUR LA CRÉATION DU PLAN :
+        1.  **ANALYSE PROFONDE** : Analyse la demande de l'utilisateur à la lumière du contexte RAG. Le contexte RAG est ta source de vérité. Il contient des exemples de code, des noms de classes et des concepts importants.
+        2.  **UTILISATION ACTIVE DU CONTEXTE** : Ton plan DOIT refléter les informations du contexte. Si le RAG mentionne la classe `Calculator` ou l'intégrateur `VelocityVerlet`, ton plan doit explicitement inclure des étapes pour les utiliser.
+        3.  **DÉCOMPOSITION EN TÂCHES LOGIQUES** : Décompose la demande en une séquence de tâches de codage claires, numérotées et précises. Chaque tâche doit correspondre à une étape logique de la création du script (imports, création d'objets, configuration, exécution).
+        4.  **PRÉCISION TECHNIQUE** : Sois précis. Au lieu de "Configurer le système", écris "Créer un objet `System` et y ajouter les atomes spécifiés avec leurs positions".
+        5.  **OBJECTIF FINAL** : Le plan doit être si clair qu'un développeur junior pourrait l'exécuter sans poser de questions supplémentaires. Il doit aboutir à UN SEUL fichier de code Python.
+
+        Formatte ta réponse finale comme une liste de tâches. Ne pose pas de questions, fournis le plan d'action final.
+        """
 
         # Appel réel à votre agent
-        plan_response = await self.idea_generator.process_message(improvement_prompt)
+        plan_response = await self.idea_generator.process_message(planner_prompt)
 
         if not plan_response or not hasattr(plan_response, 'improvement_proposal'):
             return "❌ Le planificateur n'a pas pu générer de plan."
