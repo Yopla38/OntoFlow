@@ -152,10 +152,10 @@ class OntoRAGMagic(Magics):
                 if command.startswith('/'):
                     # --- COMMANDES DE L'AGENT ---
                     if command == '/agent':
-                        print("🆕 Nouvelle conversation avec l'agent. Mémoire effacée.")
-                        self.rag.agent_fortran.clear_memory()
+                        #print("🆕 Nouvelle conversation avec l'agent. Mémoire effacée.")
+                        #self.rag.agent_fortran.clear_memory()
                         await self._handle_agent_run(args)
-                    # ... (le reste de la logique des commandes reste identique) ...
+
                     elif command == '/agent_reply':
                         await self._handle_agent_run(args)
                     elif command == '/add_docs':

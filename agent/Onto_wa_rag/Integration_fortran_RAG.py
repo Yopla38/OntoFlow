@@ -56,6 +56,7 @@ class OntoDocumentProcessor(DocumentProcessor):
 
         # Initialiser les chunkers spécialisés
         self.fortran_processor = None  # Sera initialisé plus tard
+        self.jupyter_processor = None
 
         from .semantic_analysis.core.semantic_chunker import HierarchicalSemanticChunker
         self.hierarchical_chunker = HierarchicalSemanticChunker(
@@ -69,7 +70,7 @@ class OntoDocumentProcessor(DocumentProcessor):
         self.ontology_manager = None
 
         # Types de fichiers qui doivent être lus directement (sans conversion)
-        self.direct_read_types = {'fortran', 'code', 'text', 'config'}
+        self.direct_read_types = {'fortran', 'code', 'text', 'config', 'jupyter'}
 
     def set_ontology_components(self, ontology_manager, concept_classifier):
         """Configure les composants ontologiques"""
@@ -92,6 +93,20 @@ class OntoDocumentProcessor(DocumentProcessor):
             document_store, rag_engine, self.ontology_manager
         )
         print("✅ Module Fortran initialisé")
+
+    async def initialize_jupyter_module(self, document_store, rag_engine=None):
+        """
+        Initialise le module Fortran après que document_store soit disponible.
+        """
+        from .jupyter_analysis.document_processor_jupyter import get_jupyter_processor
+
+        if hasattr(document_store, 'initialize'):
+            await document_store.initialize()
+
+        self.jupyter_processor = await get_jupyter_processor(
+            document_store, rag_engine, self.ontology_manager
+        )
+        print("✅ Module jupyter initialisé")
 
     async def _extract_text_with_metadata(self, filepath: str) -> Tuple[str, Dict[str, Any]]:
 
@@ -165,6 +180,13 @@ class OntoDocumentProcessor(DocumentProcessor):
             chunks = await self.hierarchical_chunker.create_semantic_chunks(
                 text_content, document_id, filepath, metadata
             )
+        elif file_type == 'jupyter':
+            print(f"✂️  Using Jupyter chunker")
+            if not self.jupyter_processor:
+                raise RuntimeError("Module jupyter non initialisé. Appelez initialize_jupyter_module() d'abord.")
+            chunks = await self.jupyter_processor.process_jupyter_document(
+                filepath, document_id, text_content, metadata
+            )
         else:
             print(f"✂️  Utilisation du chunker générique")
             chunks = self._create_chunks(text_content, document_id, filepath)
@@ -217,6 +239,7 @@ class OntoRAG:
             # Code source autres
             '.py': 'code', '.c': 'code', '.cpp': 'code',
             '.h': 'code', '.hpp': 'code', '.java': 'code',
+            '.ipynb': 'jupyter',
 
             # Configs
             '.yaml': 'config', '.yml': 'config', '.json': 'config',
@@ -345,7 +368,10 @@ class OntoRAG:
             print("✅ Ontology_manager assigné au processeur")
 
         # Initialiser le système de contexte
+        # Fortran module
         await self.custom_processor.initialize_fortran_module(self.rag_engine.document_store, self.rag_engine)
+        # Jupyter module
+        await self.custom_processor.initialize_jupyter_module(self.rag_engine.document_store, self.rag_engine)
 
         # Moteur de recherche par niveau
         self.level_search_engine = LevelBasedSearchEngine(
@@ -1061,17 +1087,33 @@ class OntoRAG:
         extension = Path(filepath).suffix.lower()
         return self.file_extensions.get(extension, 'text')
 
-    def _calculate_file_hash(self, filepath: str) -> str:
-        """Calcule le hash MD5 d'un fichier"""
+    async def _calculate_file_hash(self, filepath: str) -> str:
+        """Calcule le hash MD5 d'un fichier local ou d'une URL"""
         hash_md5 = hashlib.md5()
-        try:
-            with open(filepath, "rb") as f:
-                for chunk in iter(lambda: f.read(4096), b""):
-                    hash_md5.update(chunk)
-        except Exception as e:
-            self.logger.error(f"Erreur lors du calcul du hash pour {filepath}: {e}")
-            return ""
-        return hash_md5.hexdigest()
+
+        # Cas URL
+        if filepath.startswith(("http://", "https://")):
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(filepath) as response:
+                        response.raise_for_status()
+                        async for chunk in response.content.iter_chunked(4096):
+                            hash_md5.update(chunk)
+                return hash_md5.hexdigest()
+            except Exception as e:
+                self.logger.error(f"Erreur lors du calcul du hash pour URL {filepath}: {e}")
+                return ""
+
+        # Cas fichier local
+        else:
+            try:
+                with open(filepath, "rb") as f:
+                    for chunk in iter(lambda: f.read(4096), b""):
+                        hash_md5.update(chunk)
+                return hash_md5.hexdigest()
+            except Exception as e:
+                self.logger.error(f"Erreur lors du calcul du hash pour {filepath}: {e}")
+                return ""
 
     def _get_document_id(self, filepath: str) -> str:
         """Génère un ID unique pour un document"""
@@ -1101,7 +1143,7 @@ class OntoRAG:
         doc_id = self._get_document_id(filepath)
 
         # Vérifier si le fichier a changé
-        current_hash = self._calculate_file_hash(filepath)
+        current_hash = await self._calculate_file_hash(filepath)
         if not force_update and doc_id in self.documents_metadata:
             if self.documents_metadata[doc_id].get('file_hash') == current_hash:
                 print(f"📄 {Path(filepath).name} - Aucun changement détecté")

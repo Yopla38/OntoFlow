@@ -10,11 +10,15 @@
 
 # document_store.py
 import asyncio
+import hashlib
 import json
 import os
 import shutil
+from pathlib import Path
 from typing import List, Dict, Any, Optional
 import pickle
+
+import aiohttp
 
 
 class DocumentStore:
@@ -61,74 +65,72 @@ class DocumentStore:
         """
         Ajoute un document avec un ID spécifique en assurant la cohérence avec metadata.json
         """
-        # Vérifier si le document existe déjà dans metadata.json
+        # Vérifier si le document existe déjà
         if document_id in self.documents:
             doc_info = self.documents[document_id]
             doc_path = doc_info.get("path", "")
-
             if os.path.exists(doc_path):
                 print(f"Document {document_id} déjà présent avec fichier existant.")
-
-                # Vérifier si chunks et embeddings existent
                 chunks_path = os.path.join(self.storage_dir, "chunks", f"{document_id}.pkl")
                 embedding_path = os.path.join(self.embedding_manager.storage_dir, f"{document_id}.pkl")
-
-                # Si tout existe, pas besoin de réindexer
                 if os.path.exists(chunks_path) and os.path.exists(embedding_path):
                     return document_id
-
-                # Sinon, continuer pour recréer les fichiers manquants
                 print(f"Fichiers associés manquants pour document {document_id}, réindexation...")
 
-        # Traiter le document en utilisant l'ID fourni
+        # Traiter le document
         _, chunks = await self.processor.process_document(filepath, document_id, additional_metadata)
 
-        # Copier le document dans le répertoire avec nom standardisé
-        filename = os.path.basename(filepath)
-        document_path = os.path.join(self.documents_dir, f"{document_id}_beir_{document_id}.txt")
+        # 🔑 Générer un nom de fichier court et stable
+        if filepath.startswith(("http://", "https://")):
+            original_filename = Path(filepath).name or "remote_file"
+        else:
+            original_filename = os.path.basename(filepath)
 
-        # Copier de façon asynchrone
+        # Hash pour éviter les noms trop longs ou caractères interdits
+        short_hash = hashlib.md5(filepath.encode("utf-8")).hexdigest()[:8]
+        safe_filename = f"{document_id}_{short_hash}.txt"
+
+        document_path = os.path.join(self.documents_dir, safe_filename)
+
         loop = asyncio.get_event_loop()
-        await loop.run_in_executor(None, lambda: shutil.copy2(filepath, document_path))
+        if filepath.startswith(("http://", "https://")):
+            async with aiohttp.ClientSession() as session:
+                async with session.get(filepath) as response:
+                    response.raise_for_status()
+                    content = await response.read()
+                    await loop.run_in_executor(None, lambda: open(document_path, "wb").write(content))
+        else:
+            await loop.run_in_executor(None, lambda: shutil.copy2(filepath, document_path))
 
-        # Stocker les métadonnées au format standard observé
+        # Stocker métadonnées
         self.documents[document_id] = {
             "id": document_id,
             "path": document_path,
             "original_path": filepath,
-            "original_filename": filename,
+            "original_filename": original_filename,
             "chunks_count": len(chunks),
-            "beir_id": document_id,  # Stocker l'ID BEIR explicitement
+            "beir_id": document_id,
             "additional_metadata": additional_metadata
         }
 
-        # Stocker les chunks
+        # Stockage des chunks
         self.document_chunks[document_id] = chunks
-
-        # Sauvegarder les chunks
         chunks_dir = os.path.join(self.storage_dir, "chunks")
         os.makedirs(chunks_dir, exist_ok=True)
         chunks_path = os.path.join(chunks_dir, f"{document_id}.pkl")
-        await asyncio.get_event_loop().run_in_executor(
-            None,
-            lambda: self._save_chunks_sync(chunks_path, chunks)
-        )
+        await loop.run_in_executor(None, lambda: self._save_chunks_sync(chunks_path, chunks))
 
-        # Créer ou charger les embeddings
+        # Embeddings
         embedding_path = os.path.join(self.embedding_manager.storage_dir, f"{document_id}.pkl")
         if os.path.exists(embedding_path):
             print(f"Embeddings existants trouvés pour {document_id}, chargement...")
             await self.embedding_manager.load_embeddings(document_id)
         else:
-            # Créer les embeddings
             print(f"Création des embeddings pour {document_id}...")
             await self.embedding_manager.create_embeddings(chunks)
-            # Sauvegarder les embeddings
             await self.embedding_manager.save_embeddings(document_id)
 
-        # Sauvegarder les métadonnées mises à jour
         await self._save_metadata()
-
         return document_id
 
     def _load_metadata(self) -> None:

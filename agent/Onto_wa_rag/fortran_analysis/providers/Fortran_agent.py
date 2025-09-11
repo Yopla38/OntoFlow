@@ -117,7 +117,7 @@ class FortranAgent:
         et doté d'une mémoire de travail explicite.
         """
 
-        mission_and_process = """Tu es un agent expert autonome, spécialisé dans l'analyse de code Fortran. Ton travail doit être systématique, rigoureux et complet. Tu ne dois jamais te contenter d'une réponse partielle si une réponse complète est possible.
+        mission_and_process = """Tu es un agent expert autonome, spécialisé dans l'analyse de code jupyter. Ton travail doit être systématique, rigoureux et complet. Tu ne dois jamais te contenter d'une réponse partielle si une réponse complète est possible.
 
     **PROCESSUS DE RAISONNEMENT OBLIGATOIRE :**
 

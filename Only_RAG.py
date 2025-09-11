@@ -27,15 +27,16 @@ async def example_usage():
 
     await rag.initialize()
 
-    #from files_to_index import DOCUMENTS
+    from files_to_index import DOCUMENTS
     import os
 
+    """
     DOCUMENTS = [
         {"filepath": os.path.join(os.path.dirname(os.path.abspath(__file__)), "test_folder/PSbox.f90"),
          "project_name": "BigDFT", "version": "1.9"},
         # Ajoutez ici d'autres documents si vous le souhaitez
     ]
-
+    """
     # Traitement parallèle
     results = await rag.add_documents_batch(DOCUMENTS, max_concurrent=MAX_CONCURRENT)
     print(f"Ajout terminé: {sum(results.values())}/{len(results)} succès")

@@ -1074,6 +1074,159 @@ class ConceptHopfieldClassifier:
     ) -> List[Dict[str, Any]]:
         """
         Détecte automatiquement les concepts pertinents pour une requête.
+        CORRECTION: S'assurer qu'aucune coroutine ne reste non-awaited.
+        """
+        try:
+            # Normaliser l'embedding
+            if np.linalg.norm(query_embedding) > 0:
+                query_embedding = query_embedding / np.linalg.norm(query_embedding)
+
+            # Préparer la liste pour les résultats
+            concept_matches = []
+
+            # Commencer par le niveau le plus profond et remonter
+            for level in range(self.max_level, 0, -1):
+                if level not in self.level_networks:
+                    continue
+
+                # ✅ CORRECTION: Vérification que le réseau n'est pas une coroutine
+                network = self.level_networks[level]
+                if asyncio.iscoroutine(network):
+                    self.logger.warning(f"Réseau niveau {level} est une coroutine non-awaited")
+                    continue
+
+                # Obtenir le réseau Hopfield pour ce niveau
+                try:
+                    # ✅ CORRECTION: S'assurer que evaluate_query est synchrone
+                    evaluation = network.evaluate_query(query_embedding)
+
+                    # Vérifier que evaluation n'est pas une coroutine
+                    if asyncio.iscoroutine(evaluation):
+                        self.logger.warning(f"Evaluation niveau {level} retourne une coroutine")
+                        evaluation = await evaluation  # Await si nécessaire
+
+                except Exception as e:
+                    self.logger.warning(f"Erreur évaluation niveau {level}: {e}")
+                    continue
+
+                # Récupérer les concepts les plus similaires
+                closest_concepts = evaluation.get("closest_patterns", [])
+
+                # ✅ CORRECTION: Nettoyer les résultats de toute coroutine
+                valid_concepts = []
+                for concept in closest_concepts:
+                    # Vérifier que concept n'est pas une coroutine
+                    if asyncio.iscoroutine(concept):
+                        self.logger.warning("Concept dans closest_patterns est une coroutine")
+                        continue
+
+                    if not isinstance(concept, dict) or "label" not in concept:
+                        continue
+
+                    confidence = concept.get("confidence", 0.0)
+                    if confidence < min_confidence:
+                        continue
+
+                    concept_uri = concept["label"]
+
+                    # ✅ CORRECTION: Vérifier que l'URI n'est pas une coroutine
+                    if asyncio.iscoroutine(concept_uri):
+                        self.logger.warning("Concept URI est une coroutine")
+                        continue
+
+                    if concept_uri in self.ontology_manager.concepts:
+                        concept_obj = self.ontology_manager.concepts[concept_uri]
+
+                        # ✅ CORRECTION: S'assurer que les propriétés ne sont pas des coroutines
+                        label = concept_obj.label if hasattr(concept_obj, 'label') and concept_obj.label else \
+                        concept_uri.split('#')[-1]
+
+                        if asyncio.iscoroutine(label):
+                            label = str(concept_uri.split('#')[-1])
+
+                        valid_concepts.append({
+                            "concept_uri": str(concept_uri),  # Forcer en string
+                            "label": str(label),  # Forcer en string
+                            "confidence": float(confidence),  # Forcer en float
+                            "level": int(level)  # Forcer en int
+                        })
+
+                # Si on a trouvé suffisamment de concepts, on peut s'arrêter
+                if len(valid_concepts) >= max_concepts:
+                    concept_matches.extend(valid_concepts[:max_concepts])
+                    break
+
+                concept_matches.extend(valid_concepts)
+
+                if len(concept_matches) >= max_concepts:
+                    break
+
+            # ✅ CORRECTION: Nettoyage final pour s'assurer qu'aucune coroutine ne subsiste
+            cleaned_matches = []
+            for match in concept_matches[:max_concepts]:
+                if not asyncio.iscoroutine(match) and isinstance(match, dict):
+                    # Double vérification que tous les champs sont sérialisables
+                    cleaned_match = {}
+                    for key, value in match.items():
+                        if not asyncio.iscoroutine(value):
+                            if isinstance(value, (str, int, float, bool)):
+                                cleaned_match[key] = value
+                            else:
+                                cleaned_match[key] = str(value)  # Forcer en string si type complexe
+
+                    cleaned_matches.append(cleaned_match)
+
+            return cleaned_matches
+
+        except Exception as e:
+            self.logger.error(f"Erreur dans auto_detect_concepts: {e}", exc_info=True)
+            return []  # Retourner une liste vide plutôt qu'une exception
+
+    def _clean_result_for_serialization(self, obj):
+        """
+        Nettoie récursivement un objet de toute coroutine pour la sérialisation.
+        """
+        import asyncio
+
+        if asyncio.iscoroutine(obj):
+            self.logger.warning("Coroutine détectée et supprimée")
+            return None
+
+        if isinstance(obj, dict):
+            cleaned = {}
+            for key, value in obj.items():
+                if not asyncio.iscoroutine(key) and not asyncio.iscoroutine(value):
+                    cleaned_value = self._clean_result_for_serialization(value)
+                    if cleaned_value is not None:
+                        cleaned[str(key)] = cleaned_value
+            return cleaned
+
+        elif isinstance(obj, (list, tuple)):
+            cleaned = []
+            for item in obj:
+                cleaned_item = self._clean_result_for_serialization(item)
+                if cleaned_item is not None:
+                    cleaned.append(cleaned_item)
+            return cleaned if isinstance(obj, list) else tuple(cleaned)
+
+        elif isinstance(obj, (str, int, float, bool, type(None))):
+            return obj
+
+        else:
+            # Pour les types complexes, convertir en string
+            try:
+                return str(obj)
+            except:
+                return None
+
+    async def old_auto_detect_concepts(
+            self,
+            query_embedding: np.ndarray,
+            min_confidence: float = 0.65,
+            max_concepts: int = 3
+    ) -> List[Dict[str, Any]]:
+        """
+        Détecte automatiquement les concepts pertinents pour une requête.
         Utilise une approche ascendante en commençant par les concepts spécifiques.
 
         Args:
