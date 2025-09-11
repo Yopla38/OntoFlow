@@ -1,7 +1,7 @@
 import asyncio
 import json
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Tuple
 import sys
 import nest_asyncio
 
@@ -32,19 +32,21 @@ async def show_available_commands():
 
 ---
 
-#### 🧠 **Agent Unifié (Fortran + Jupyter)**
-- **`/agent <question>`**: Démarre une conversation avec l'agent unifié (analyse Fortran ET Jupyter)
-- **`/agent_reply <réponse>`**: Répond à une question de clarification de l'agent
-- **`/agent_memory`**: Affiche le résumé de la mémoire actuelle de l'agent
-- **`/agent_clear`**: Efface la mémoire de l'agent et termine la conversation
-- **`/agent_sources`**: Affiche toutes les sources consultées dans la session courante
+#### 🔍 **Recherche (Modes Différents)**
+- **`<question>`**: (Sans `/`) **Recherche simple et rapide** avec similarité sémantique
+- **`/simple_search <query>`**: Recherche sémantique (5 résultats)
+- **`/simple_search_more <query>`**: Recherche sémantique (10 résultats)
+- **`/search <question>`**: Recherche classique du RAG avec réponse générée
+- **`/hierarchical <q>`**: Recherche hiérarchique sur plusieurs niveaux
 
 ---
 
-#### 🔍 **Recherche et Consultation**
-- **`<question>`**: (Sans `/`) Lance une requête directe avec l'agent unifié
-- **`/search <question>`**: Effectue une recherche sémantique classique
-- **`/hierarchical <q>`**: Lance une recherche hiérarchique sur plusieurs niveaux
+#### 🧠 **Agent Unifié (Analyse Approfondie)**
+- **`/agent <question>`**: **Analyse complète** avec l'agent unifié (Fortran + Jupyter)
+- **`/agent_reply <réponse>`**: Répond à une question de clarification de l'agent
+- **`/agent_memory`**: Affiche le résumé de la mémoire actuelle de l'agent
+- **`/agent_clear`**: Efface la mémoire de l'agent
+- **`/agent_sources`**: Affiche toutes les sources consultées dans la session
 
 ---
 
@@ -59,6 +61,16 @@ async def show_available_commands():
 - **`/help`**: Affiche ce message d'aide
 
 ---
+
+### 🎯 **Quand utiliser quel mode ?**
+
+| Mode | Cas d'usage | Vitesse | Précision |
+|------|-------------|---------|-----------|
+| **Recherche simple** (`query`) | Recherche rapide de contenu | ⚡⚡⚡ | 🎯🎯 |
+| **Recherche classique** (`/search`) | Question avec réponse générée | ⚡⚡ | 🎯🎯🎯 |
+| **Agent unifié** (`/agent`) | Analyse complexe, multi-fichiers | ⚡ | 🎯🎯🎯🎯 |
+| **Recherche hiérarchique** (`/hierarchical`) | Recherche structurée par niveaux | ⚡ | 🎯🎯🎯 |
+
 """))
 
 async def display_query_result(result: Dict[str, Any]):
@@ -182,6 +194,206 @@ class OntoRAGMagic(Magics):
         else:
             display(Markdown(f"### ⚠️ Statut inattendu : {agent_response.status}"))
 
+    async def _handle_simple_search(self, query: str, max_results: int = 5):
+        """Effectue une recherche simple + génération de réponse avec le LLM."""
+        print(f"🔍 Recherche simple RAG : '{query}'")
+
+        # Vérifier si l'agent unifié est disponible
+        if not hasattr(self.rag, 'unified_agent') or not self.rag.unified_agent:
+            display(Markdown("❌ **Agent unifié non disponible**\n\nUtilisez `/search` pour la recherche classique."))
+            return
+
+        retriever = self.rag.unified_agent.semantic_retriever
+
+        # Réindexation à la demande si nécessaire
+        if len(retriever.chunks) == 0:
+            print("  🔄 Index vide, construction automatique...")
+            notebook_count = retriever.build_index_from_existing_chunks(self.rag)
+
+            if notebook_count == 0:
+                display(Markdown(f"""❌ **Aucun notebook disponible**
+
+    Les documents indexés ne contiennent pas de notebooks Jupyter (.ipynb).
+
+    **Alternatives :**
+    - `/search {query}` pour la recherche classique
+    - `/list` pour voir les documents disponibles"""))
+                return
+
+        # 1. Effectuer la recherche sémantique
+        results = retriever.query(query, k=max_results)
+
+        if not results:
+            display(Markdown(f"""### 🔍 Recherche : "{query}"
+
+    ❌ **Aucun résultat trouvé** (seuil de similarité : 0.25)
+
+    **Suggestions :**
+    - Essayez des termes plus généraux
+    - `/agent {query}` pour une analyse approfondie  
+    - `/search {query}` pour la recherche classique"""))
+            return
+
+        # 2. Générer la réponse avec le LLM
+        print(f"  🤖 Génération de la réponse avec {len(results)} chunks de contexte...")
+
+        try:
+            answer, sources_info = await self._generate_rag_response(query, results)
+
+            # 3. Afficher la réponse complète
+            await self._display_rag_response(query, answer, results, sources_info)
+
+        except Exception as e:
+            print(f"❌ Erreur génération réponse: {e}")
+            # Fallback : afficher les chunks bruts
+            display(Markdown("⚠️ **Erreur de génération LLM**, affichage des chunks bruts :"))
+            await self._display_simple_search_results(query, results)
+
+    async def _generate_rag_response(self, query: str, results: List[Dict[str, Any]]) -> Tuple[
+        str, List[Dict[str, Any]]]:
+        """Génère une réponse avec le LLM à partir des chunks trouvés."""
+
+        # 1. Construire le contexte depuis les chunks
+        context_parts = []
+        sources_info = []
+
+        for i, result in enumerate(results, 1):
+            source_filename = result.get("source_filename", "Unknown")
+            content = result.get("content", "")
+            similarity_score = result.get("similarity_score", 0.0)
+
+            # Ajouter au contexte
+            context_parts.append(f"[Source {i}] De {source_filename} (score: {similarity_score:.3f}):\n{content}")
+
+            # Info pour les sources finales
+            sources_info.append({
+                "index": i,
+                "filename": source_filename,
+                "score": similarity_score,
+                "source_file": result.get("source_file", ""),
+                "tokens": result.get("tokens", "?")
+            })
+
+        context = "\n\n".join(context_parts)
+
+        # 2. Construire le prompt pour le LLM
+        system_prompt = """Tu es un assistant expert qui répond aux questions en citant TOUJOURS ses sources.
+
+    Tu as accès aux sources suivantes provenant de notebooks Jupyter :
+    - Cite OBLIGATOIREMENT tes sources en utilisant [Source N] dans ta réponse
+    - Concentre-toi sur les informations les plus pertinentes
+    - Structure ta réponse de manière claire et pratique
+    - N'invente aucune information qui ne figure pas dans les sources
+
+    Exemple de citation: "D'après [Source 1], pour créer une molécule..."
+    """
+
+        user_prompt = f"""Question: {query}
+
+    Contexte disponible:
+    {context}
+
+    Réponds à la question en utilisant exclusivement les informations du contexte et en citant tes sources [Source N]."""
+
+        # 3. Appeler le LLM
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt}
+        ]
+
+        llm_response = await self.rag.rag_engine.llm_provider.generate_response(messages, temperature=0.3)
+
+        return llm_response, sources_info
+
+    async def _display_rag_response(self, query: str, answer: str, results: List[Dict], sources_info: List[Dict]):
+        """Affiche la réponse RAG complète avec métadonnées."""
+
+        # En-tête avec statistiques
+        total_indexed = len(self.rag.unified_agent.semantic_retriever.chunks)
+        indexed_files_count = len(self.rag.unified_agent.semantic_retriever.indexed_files)
+        avg_score = sum(r.get("similarity_score", 0) for r in results) / len(results)
+
+        header = f"""### 🤖 Réponse RAG : "{query}"
+
+    📊 **Contexte :** {len(results)} chunks sélectionnés sur {total_indexed} disponibles ({indexed_files_count} notebooks) | **Score moyen :** {avg_score:.3f}
+
+    ---
+
+    """
+
+        # Corps de la réponse
+        response_body = f"""### 💡 Réponse
+
+    {answer}
+
+    ---
+
+    """
+
+        # Sources détaillées
+        sources_section = "### 📚 Sources utilisées\n\n"
+        for source in sources_info:
+            score_bar = "🟢" * int(source["score"] * 10) + "⚪" * (10 - int(source["score"] * 10))
+            sources_section += f"""**[Source {source['index']}]** `{source['filename']}` | Score: {source['score']:.3f} {score_bar} | Tokens: {source['tokens']}\n\n"""
+
+        # Actions suggérées
+        footer = f"""
+    ---
+
+    ### 💡 Actions suggérées
+
+    - **Analyse approfondie :** `%rag /agent {query}`
+    - **Plus de contexte :** `%rag /simple_search_more {query}`  
+    - **Voir les chunks bruts :** `%rag /simple_search_raw {query}`
+    """
+
+        # Afficher tout
+        display(Markdown(header + response_body + sources_section + footer))
+
+    async def _display_simple_search_results(self, query: str, results: List[Dict[str, Any]]):
+        """Affiche les résultats de la recherche simple de manière attractive."""
+
+        # En-tête avec statistiques
+        total_indexed = len(self.rag.unified_agent.semantic_retriever.chunks)
+        indexed_files = len(self.rag.unified_agent.semantic_retriever.indexed_files)
+
+        header = f"""### 🔍 Résultats de recherche : "{query}"
+
+    📊 **{len(results)} résultat(s) trouvé(s)** sur {total_indexed} chunks indexés ({indexed_files} notebooks)
+
+    ---
+    """
+        display(Markdown(header))
+
+        # Afficher chaque résultat
+        for i, result in enumerate(results, 1):
+            score = result["similarity_score"]
+            source_file = result["source_filename"]
+            tokens = result.get("tokens", "?")
+            content = result["content"]
+
+            # Tronquer le contenu si trop long
+            if len(content) > 800:
+                content_preview = content[:800] + "\n\n*[...contenu tronqué...]*"
+            else:
+                content_preview = content
+
+            # Barre de score visuelle
+            score_bar = "🟢" * int(score * 10) + "⚪" * (10 - int(score * 10))
+
+            result_md = f"""
+    #### 📄 Résultat {i}/{len(results)}
+
+    **📁 Source :** `{source_file}` | **🎯 Score :** {score:.3f} {score_bar} | **📝 Tokens :** {tokens}
+
+    ```
+    {content_preview}
+    ```
+
+    ---
+    """
+            display(Markdown(result_md))
+
     @line_cell_magic
     def rag(self, line, cell=None):
         """Magic command principale pour interagir avec OntoRAG."""
@@ -265,8 +477,8 @@ class OntoRAGMagic(Magics):
                         await show_available_commands()
 
                 else:  # Requête en langage naturel directe
-                    print("🤖 Requête directe via l'agent unifié...")
-                    await self._handle_agent_run(query)
+                    print("🤖 Requête directe via SimpleRetriever...")
+                    await self._handle_simple_search(query, max_results=5)
 
             except Exception as e:
                 print(f"❌ Une erreur est survenue: {e}")

@@ -32,6 +32,7 @@ class SimpleRetriever:
         self.model = SentenceTransformer(model_name)
         self.chunks: List[Dict[str, Any]] = []
         self.embeddings: np.ndarray | None = None
+        self.indexed_files = set()
 
     def build_index_from_notebook(self, notebook_path: str):
         """Parse notebook → entities → chunks → embeddings"""
@@ -57,10 +58,74 @@ class SimpleRetriever:
         results = []
         for idx in top_idx:
             res = self.chunks[idx].copy()
-            res["score"] = float(sims[idx])
+            res["similarity_score"] = float(sims[idx])
             results.append(res)
         return results
 
+    def build_index_from_existing_chunks(self, rag_instance):
+        """Construit l'index à partir des chunks déjà créés dans le document_store."""
+        print("🔄 Construction de l'index sémantique à partir des chunks existants...")
+
+        all_chunks = []
+        notebook_count = 0
+        self.indexed_files = set()
+
+        # Parcourir tous les documents dans le document_store
+        for doc_id, chunks in rag_instance.rag_engine.document_store.document_chunks.items():
+            doc_info = rag_instance.rag_engine.document_store.documents.get(doc_id, {})
+            original_path = doc_info.get('original_path', '')
+
+            # Ne traiter que les notebooks Jupyter
+            if original_path.endswith('.ipynb'):
+                notebook_count += 1
+                filename = Path(original_path).name
+                self.indexed_files.add(original_path)
+                #print(f"  📓 Récupération des chunks de {filename}...")
+
+                for chunk in chunks:
+                    # Enrichir le chunk avec les infos manquantes pour le retriever
+                    enriched_chunk = {
+                        "content": chunk.get('text', ''),
+                        "tokens": self._estimate_tokens(chunk.get('text', '')),
+                        "source_file": original_path,
+                        "source_filename": filename,
+                        "source_type": "notebook",
+                        "chunk_id": chunk.get('id'),
+                        "metadata": chunk.get('metadata', {})
+                    }
+                    all_chunks.append(enriched_chunk)
+
+        if not all_chunks:
+            print("  ⚠️ Aucun chunk de notebook trouvé")
+            return 0
+
+        # Construire l'index d'embeddings
+        self.chunks = all_chunks
+        texts = [chunk["content"] for chunk in all_chunks]
+
+        print(f"  🔧 Génération des embeddings pour {len(texts)} chunks...")
+        self.embeddings = self.model.encode(texts, normalize_embeddings=True)
+
+        print(f"✅ Index sémantique prêt: {len(all_chunks)} chunks de {notebook_count} notebooks")
+        return notebook_count
+
+    def _estimate_tokens(self, text: str, chars_per_token: int = 4) -> int:
+        """Approxime le nombre de tokens."""
+        return max(1, len(text) // chars_per_token)
+
+    def get_index_status(self):
+        """Retourne le statut de l'index sémantique."""
+        notebook_files = set()
+        for chunk in self.chunks:
+            notebook_files.add(chunk.get("source_filename", "unknown"))
+
+        return {
+            "chunks_indexed": len(self.chunks),
+            "notebooks_indexed": len(notebook_files),
+            "notebook_files": list(notebook_files),
+            "embedding_model": getattr(self.model, 'model_name', "sentence-transformers model"),
+            "index_ready": len(self.chunks) > 0
+        }
 
 # === LangChain tool wrapper (optional now, needed later) ===
 try:
@@ -85,6 +150,7 @@ except ImportError:
 # Singleton retriever (for use across modules)
 retriever_instance: SimpleRetriever | None = None
 
+
 def init_retriever(notebook_path: str):
     global retriever_instance
     retriever_instance = SimpleRetriever()
@@ -103,5 +169,5 @@ if __name__ == "__main__":
 
     print("\n=== Query Results ===")
     for r in results:
-        print(f"\n--- Result (Score: {r['score']:.3f}) ---")
+        print(f"\n--- Result (Score: {r['similarity_score']:.3f}) ---")
         print(r["content"])  # show full chunk text
