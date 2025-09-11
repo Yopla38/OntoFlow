@@ -7,7 +7,7 @@ from agent.Onto_wa_rag.Integration_fortran_RAG import OntoRAG
 from agent.Onto_wa_rag.CONSTANT import API_KEY_PATH, CHUNK_SIZE, CHUNK_OVERLAP, ONTOLOGY_PATH_TTL, MAX_CONCURRENT, MAX_RESULTS, \
     STORAGE_DIR, FORTRAN_AGENT_NB_STEP
 from agent.Onto_wa_rag.fortran_analysis.providers.consult import FortranEntityExplorer
-
+from agent.Onto_wa_rag.jupyter_analysis.entity_explorer_jupyter import JupyterEntityExplorer
 
 # Imports pour le RAG
 from agent.Onto_wa_rag.utils.rag_engine import RAGEngine
@@ -97,7 +97,7 @@ async def example_usage():
                 entity_name = query[6:].strip()
                 if entity_name:
                     print(f"🔍 Recherche entité Fortran: {entity_name}")
-                    entities = await rag.search_fortran_entities(entity_name)
+                    entities = await rag.search_jupyter_entities(entity_name)
                     await display_fortran_entities(entities)
 
             # ==================== GESTION DOCUMENTS ====================
@@ -114,8 +114,15 @@ async def example_usage():
                     print(json.dumps(fortran_stats, indent=2))
                 elif detail == 'entity':
                     entity_stats = await rag.get_entity_manager_stats()
-                    print("📊 Statistiques EntityManager:")
+                    print("📊 Statistiques EntityManager fortran:")
                     print(json.dumps(entity_stats, indent=2))
+                    entity_stats = await rag.get_entity_manager_stats_jupyter()
+                    print("📊 Statistiques EntityManager jupyter:")
+                    print(json.dumps(entity_stats, indent=2))
+                elif detail == 'jupyter':
+                    fortran_stats = await rag.get_jupyter_stats()
+                    print("📊 Statistiques jupyter:")
+                    print(json.dumps(fortran_stats, indent=2))
                 else:
                     stats = rag.get_statistics()
                     print("📊 Statistiques générales:")
@@ -206,11 +213,132 @@ async def example_usage():
                     print(report['local_context']['source_code'])
                     print("--- FIN DU RAPPORT ---")
 
+                if not rag.custom_processor.jupyter_processor.entity_manager.entities:
+                    print("\nEntityManager est vide. Ajoutez des documents pour l'utiliser.")
+                    return
+
+                explorer = JupyterEntityExplorer(rag.custom_processor.jupyter_processor.entity_manager,
+                                                 rag.ontology_manager)
+
+                report = await explorer.get_full_report(entity)
+                if "error" in report:
+                    print(f"\n--- ERREUR ---")
+                    print(report["error"])
+                else:
+                    print(f"\n--- RAPPORT COMPLET JUPYTER POUR : {report['entity_name']} ---")
+
+                    print("\n[ Résumé ]")
+                    for key, value in report['summary'].items():
+                        print(f"  - {key.replace('_', ' ').capitalize()}: {value}")
+
+                    # Affichage spécifique au notebook si disponible
+                    if report.get('notebook_summary'):
+                        print(f"\n[ Résumé du Notebook ]")
+                        print(f"  {report['notebook_summary']}")
+
+                    if report.get('entity_role') != 'default':
+                        print(f"\n[ Rôle de l'Entité ]")
+                        print(f"  - {report['entity_role']}")
+
+                    print("\n[ Relations Sortantes (ce que cette entité utilise) ]")
+                    outgoing = report['outgoing_relations']
+
+                    # Affichage des imports
+                    if 'imports' in outgoing:
+                        print("  - Imports:")
+                        if outgoing['imports']:
+                            for imp in outgoing['imports']:
+                                if isinstance(imp, dict):
+                                    line_info = f" (ligne {imp['line']})" if imp.get('line', 0) > 0 else ""
+                                    print(f"    - {imp['name']}{line_info}")
+                                else:
+                                    print(f"    - {imp}")
+                        else:
+                            print("    - (Aucun)")
+
+                    # Affichage des appels de fonction
+                    if 'function_calls' in outgoing:
+                        print("  - Appels de fonction:")
+                        if outgoing['function_calls']:
+                            for call in outgoing['function_calls']:
+                                if isinstance(call, dict):
+                                    line_info = f" (ligne {call['line']})" if call.get('line', 0) > 0 else ""
+                                    print(f"    - {call['name']}{line_info}")
+                                else:
+                                    print(f"    - {call}")
+                        else:
+                            print("    - (Aucun)")
+
+                    print("\n[ Relations Entrantes (qui référence cette entité) ]")
+                    if report['incoming_relations']:
+                        for ref in report['incoming_relations']:
+                            cell_type = ref.get('cell_type', ref.get('type', 'unknown'))
+                            parent_info = f", parent: {ref['parent']}" if ref.get('parent') != 'N/A' else ""
+                            print(
+                                f"  - {ref['name']} (type: {cell_type}, notebook: {ref.get('file', 'N/A')}{parent_info})")
+                    else:
+                        print("  - (Référencée par personne)")
+
+                    print("\n[ Contexte Global (où se situe cette entité) ]")
+                    parent = report['global_context']['parent_entity']
+                    if isinstance(parent, dict):
+                        role_info = f", rôle: {parent['role']}" if parent.get('role') != 'default' else ""
+                        print(f"  - Parent: {parent['name']} (type: {parent['type']}{role_info})")
+                    else:
+                        print(f"  - Parent: {parent}")
+
+                    # Contexte notebook si disponible
+                    notebook_ctx = report['global_context'].get('notebook_context', {})
+                    if notebook_ctx:
+                        print(f"  - Notebook: {notebook_ctx.get('notebook_name', 'N/A')}")
+                        if notebook_ctx.get('notebook_summary'):
+                            print(f"  - Résumé notebook: {notebook_ctx['notebook_summary'][:100]}...")
+
+                    print("\n[ Contexte Local (ce que contient cette entité) ]")
+                    children = report['local_context']['children_entities']
+                    if children:
+                        print("  - Entités enfants:")
+                        for child in children:
+                            role_info = f", rôle: {child['role']}" if child.get('role') != 'default' else ""
+                            print(f"    - {child['name']} (type: {child['type']}{role_info})")
+                    else:
+                        print("  - Pas d'entités enfants.")
+
+                    # Informations spécifiques au notebook
+                    notebook_info = report['local_context'].get('notebook_info', {})
+                    if notebook_info:
+                        print("  - Informations notebook:")
+                        for key, value in notebook_info.items():
+                            if key != 'notebook_summary' or len(str(value)) < 200:  # Éviter de répéter un long résumé
+                                print(f"    - {key.replace('_', ' ').capitalize()}: {value}")
+
+                    print("\n[ Concepts associés à cette entité ]")
+                    concepts = report['detected_concepts']
+                    if concepts:
+                        for concept in concepts:
+                            if isinstance(concept, dict):
+                                confidence = concept.get('confidence', 0)
+                                print(f"  - {concept.get('label', 'N/A')} (confiance: {confidence:.2f})")
+                            else:
+                                print(f"  - {concept}")
+                    else:
+                        print("  - (Aucun concept détecté)")
+
+                    print("\n--- Code Source ---")
+                    source_code = report['local_context']['source_code']
+                    if len(source_code) > 2000:
+                        print(source_code[:2000] + "\n... (tronqué, source trop longue)")
+                    else:
+                        print(source_code)
+                    print("--- FIN DU RAPPORT JUPYTER ---")
+
             elif query.startswith('/refresh'):
                 scope = query[8:].strip()
                 if scope == 'fortran' or not scope:
                     print("🔄 Réindexation Fortran...")
                     await rag.refresh_fortran_index()
+                    print("🔄 Réindexation jupyter...")
+                    await rag.refresh_jupyter_index()
                     print("✅ Réindexation terminée")
 
             elif query.startswith('/agent '):
@@ -225,12 +353,12 @@ async def example_usage():
                         # Appeler l'agent avec l'entrée actuelle.
                         # use_memory=True est CRUCIAL ici pour que l'agent se souvienne du contexte
                         # de sa propre question.
-                        agent_response = await rag.agent_fortran.run(current_input, use_memory=True)
+                        agent_response = await rag.unified_agent.run(current_input, use_memory=True)
 
                         # Vérifier si la réponse de l'agent est une demande de clarification
-                        if agent_response.startswith("CLARIFICATION_NEEDED:"):
-                            # 1. Extraire la question de la chaîne de caractères spéciale
-                            question_from_agent = agent_response.replace("CLARIFICATION_NEEDED:", "").strip()
+                        if agent_response.status == "clarification_needed":
+                            # 1. Utiliser la propriété clarification_question
+                            question_from_agent = agent_response.clarification_question
 
                             # 2. Afficher la question à l'utilisateur de manière claire
                             print(f"\n❓ L'agent a besoin d'une clarification pour continuer :")
@@ -244,20 +372,59 @@ async def example_usage():
 
                             # La boucle `while` va maintenant se relancer avec cette nouvelle entrée.
 
-                        else:
-                            # Si la réponse n'est PAS une clarification, c'est la réponse finale.
+                        elif agent_response.status == "success":
+                            # Si la réponse est un succès, afficher la réponse finale
                             print("\n--- RÉPONSE FINALE DE L'AGENT ---")
-                            print(agent_response)
+                            print(agent_response.to_human_readable())
 
-                            # Sortir de la boucle de conversation.
+                            # Optionnel : Afficher des métadonnées utiles
+                            print(f"\n📊 Métadonnées :")
+                            print(f"   ⏱️  Temps d'exécution: {agent_response.execution_time_total_ms:.0f}ms")
+                            print(f"   🔢 Étapes utilisées: {agent_response.steps_taken}/{agent_response.max_steps}")
+                            print(f"   📚 Sources consultées: {len(agent_response.sources_consulted)}")
+                            print(f"   🎯 Niveau de confiance: {agent_response.confidence_level:.2f}")
+
+                            # Optionnel : Proposer des questions de suivi
+                            if agent_response.suggested_followup_queries:
+                                print(f"\n💡 Questions de suivi suggérées :")
+                                for i, suggestion in enumerate(agent_response.suggested_followup_queries[:3], 1):
+                                    print(f"   {i}. {suggestion}")
+
+                            # Sortir de la boucle de conversation
+                            break
+
+                        elif agent_response.status == "timeout":
+                            print("\n⏰ L'agent a atteint la limite de temps")
+                            print("--- RÉPONSE PARTIELLE ---")
+                            print(agent_response.to_human_readable())
+
+                            # Proposer de continuer ou d'arrêter
+                            continue_choice = input("\nVoulez-vous essayer une approche différente ? (o/n) > ")
+                            if continue_choice.lower() == 'n':
+                                break
+                            else:
+                                current_input = input("Reformulez votre question > ")
+
+                        elif agent_response.status == "error":
+                            print(f"\n❌ Erreur de l'agent : {agent_response.error_details}")
+
+                            # Proposer de réessayer
+                            retry_choice = input("Voulez-vous réessayer ? (o/n) > ")
+                            if retry_choice.lower() == 'n':
+                                break
+                            else:
+                                current_input = input("Reformulez votre question > ")
+
+                        else:
+                            print(f"\n⚠️ Statut inattendu : {agent_response.status}")
                             break
 
             elif query.startswith("/agent_memory"):
                 print("\n--- Mémoire de l'agent ---")
-                print("\n" + rag.agent_fortran.get_memory_summary())
+                print("\n" + rag.unified_agent.get_memory_summary())
 
             elif query.startswith("/agent_clear"):
-                rag.agent_fortran.clear_memory()
+                rag.unified_agent.clear_memory()
                 print("🧠 Mémoire de l'agent effacée.")
 
             # ==================== REQUÊTE NATURELLE ====================

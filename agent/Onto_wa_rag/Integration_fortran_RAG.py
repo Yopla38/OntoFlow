@@ -42,6 +42,8 @@ from .utils.document_processor import DocumentProcessor
 from .utils.rag_engine import RAGEngine
 from .provider.llm_providers import OpenAIProvider
 from .provider.get_key import get_openai_key
+from .jupyter_analysis.jupyter_agent import CodeAnalysisAgent
+from .jupyter_analysis.entity_explorer_jupyter import JupyterEntityExplorer
 
 
 class OntoDocumentProcessor(DocumentProcessor):
@@ -258,7 +260,8 @@ class OntoRAG:
         # NOUVEAU : Système de contexte
         self.context_provider = None
         # Agent pour la recherche
-        self.agent_fortran = None
+        #self.agent_fortran = None
+        self.unified_agent = None
 
     def cleanup(self):
         """
@@ -384,8 +387,21 @@ class OntoRAG:
         self.router = IntelligentQueryRouter(self.rag_engine.llm_provider, self.entity_explorer)
 
         #  Nous pouvons changer le provider pour l'agent si necessaire
+        """
         self.agent_fortran = FortranAgent(llm_provider=self.rag_engine.llm_provider, explorer=self.entity_explorer,
                                           max_steps=FORTRAN_AGENT_NB_STEP)
+        """
+        self.unified_agent = CodeAnalysisAgent(
+                                                llm_provider=self.rag_engine.llm_provider,
+                                                fortran_explorer=FortranEntityExplorer(
+                                                    self.custom_processor.fortran_processor.entity_manager,
+                                                    self.ontology_manager
+                                                ),
+                                                jupyter_explorer=JupyterEntityExplorer(
+                                                    self.custom_processor.jupyter_processor.entity_manager,
+                                                    self.ontology_manager
+                                                )
+                                            )
 
         print("✅ OntoRAG initialisé avec succès!")
 
@@ -937,6 +953,19 @@ class OntoRAG:
         except Exception as e:
             return {"error": f"Erreur récupération contexte: {str(e)}"}
 
+    async def search_jupyter_entities(self, query: str) -> List[Dict[str, Any]]:
+        """Recherche d'entités Fortran"""
+        try:
+            jupyter_processor = self.custom_processor.jupyter_processor
+            if not jupyter_processor:
+                return []
+
+            return await jupyter_processor.search_entities(query)
+
+        except Exception as e:
+            print(f"Erreur recherche entités: {e}")
+            return []
+
     async def search_fortran_entities(self, query: str) -> List[Dict[str, Any]]:
         """Recherche d'entités Fortran"""
         try:
@@ -997,6 +1026,17 @@ class OntoRAG:
             print(f"Erreur réindexation: {e}")
             raise
 
+    async def refresh_jupyter_index(self):
+        """Réindexe le module Fortran"""
+        try:
+            jupyter_processor = self.custom_processor.jupyter_processor
+            if jupyter_processor and jupyter_processor.entity_manager:
+                await jupyter_processor.entity_manager.rebuild_index()
+
+        except Exception as e:
+            print(f"Erreur réindexation: {e}")
+            raise
+
     async def get_fortran_stats(self) -> Dict[str, Any]:
         """Statistiques du module Fortran"""
         try:
@@ -1005,6 +1045,18 @@ class OntoRAG:
                 return {"error": "Module Fortran non initialisé"}
 
             return fortran_processor.get_stats()
+
+        except Exception as e:
+            return {"error": f"Erreur récupération stats: {str(e)}"}
+    
+    async def get_jupyter_stats(self) -> Dict[str, Any]:
+        """Statistiques du module Fortran"""
+        try:
+            jupyter_processor = self.custom_processor.jupyter_processor
+            if not jupyter_processor:
+                return {"error": "Module Fortran non initialisé"}
+
+            return jupyter_processor.get_stats()
 
         except Exception as e:
             return {"error": f"Erreur récupération stats: {str(e)}"}
@@ -1823,6 +1875,38 @@ Analyse la "Question Originale" et choisis l'un des deux styles de réponse suiv
 
         except Exception as e:
             return {"error": f"Erreur stats: {str(e)}"}
+
+    async def get_entity_manager_stats_jupyter(self) -> Dict[str, Any]:
+        """Statistiques détaillées de l'EntityManager"""
+        try:
+            if (not self.custom_processor or
+                    not self.custom_processor.jupyter_processor or
+                    not self.custom_processor.jupyter_processor.entity_manager):
+                return {"error": "EntityManager non disponible"}
+
+            entity_manager = self.custom_processor.jupyter_processor.entity_manager
+
+            return {
+                "total_entities": len(entity_manager.entities),
+                "entities_by_type": dict([(t, len(ids)) for t, ids in entity_manager.type_to_entities.items()]),
+                "entities_by_file": dict([(f, len(ids)) for f, ids in entity_manager.file_to_entities.items()]),
+                "name_index_size": len(entity_manager.name_to_entity),
+                "parent_child_relations": len(entity_manager.parent_to_children),
+                "initialized": getattr(entity_manager, '_initialized', False),
+                "sample_entities": [
+                    {
+                        "name": e.entity_name,
+                        "type": e.entity_type,
+                        "id": e.entity_id,
+                        "file": Path(e.filepath).name if e.filepath else "unknown"
+                    }
+                    for e in list(entity_manager.entities.values())[:10]
+                ]
+            }
+
+        except Exception as e:
+            return {"error": f"Erreur stats: {str(e)}"}
+
 
     async def preprocess_fortran_directory(
             self,
