@@ -3,21 +3,16 @@ import json
 from pathlib import Path
 from typing import Dict, Any, List
 
-from agent.agent.Onto_wa_rag.Integration_fortran_RAG import OntoRAG
-from agent.agent.Onto_wa_rag.CONSTANT import API_KEY_PATH, CHUNK_SIZE, CHUNK_OVERLAP, ONTOLOGY_PATH_TTL, MAX_CONCURRENT, MAX_RESULTS, \
+from agent.Onto_wa_rag.Integration_fortran_RAG import OntoRAG
+from agent.Onto_wa_rag.CONSTANT import API_KEY_PATH, CHUNK_SIZE, CHUNK_OVERLAP, ONTOLOGY_PATH_TTL, MAX_CONCURRENT, MAX_RESULTS, \
     STORAGE_DIR, FORTRAN_AGENT_NB_STEP
-from agent.agent.Onto_wa_rag.context_provider.query_router import IntelligentQueryRouter
-from agent.agent.Onto_wa_rag.fortran_analysis.providers.Fortran_agent import FortranAgent
-from agent.agent.Onto_wa_rag.fortran_analysis.providers.consult import FortranEntityExplorer
-from agent.agent.Onto_wa_rag.ontology.classifier import OntologyClassifier
-from agent.agent.Onto_wa_rag.ontology.ontology_manager import OntologyManager
-from agent.agent.Onto_wa_rag.semantic_analysis.core.semantic_chunker import LevelBasedSearchEngine, ConceptualHierarchicalEngine
-from agent.agent.Onto_wa_rag.utils.document_processor import DocumentProcessor
+from agent.Onto_wa_rag.fortran_analysis.providers.consult import FortranEntityExplorer
+
 
 # Imports pour le RAG
-from agent.agent.Onto_wa_rag.utils.rag_engine import RAGEngine
-from agent.agent.Onto_wa_rag.provider.llm_providers import OpenAIProvider
-from agent.agent.Onto_wa_rag.provider.get_key import get_openai_key
+from agent.Onto_wa_rag.utils.rag_engine import RAGEngine
+from agent.Onto_wa_rag.provider.llm_providers import OpenAIProvider
+from agent.Onto_wa_rag.provider.get_key import get_openai_key
 
 
 async def example_usage():
@@ -32,7 +27,14 @@ async def example_usage():
 
     await rag.initialize()
 
-    from files_to_index import DOCUMENTS
+    #from files_to_index import DOCUMENTS
+    import os
+
+    DOCUMENTS = [
+        {"filepath": os.path.join(os.path.dirname(os.path.abspath(__file__)), "test_folder/PSbox.f90"),
+         "project_name": "BigDFT", "version": "1.9"},
+        # Ajoutez ici d'autres documents si vous le souhaitez
+    ]
 
     # Traitement parallèle
     results = await rag.add_documents_batch(DOCUMENTS, max_concurrent=MAX_CONCURRENT)
