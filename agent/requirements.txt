@@ -58,3 +58,5 @@ pykeen
 fprettify
 rapidfuzz
 nest-asyncio
+sentence-transformers
+langchain

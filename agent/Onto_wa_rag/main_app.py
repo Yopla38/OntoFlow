@@ -224,7 +224,8 @@ class OntoRAG:
 
             # Configs
             '.yaml': 'config', '.yml': 'config', '.json': 'config',
-            '.xml': 'config', '.ini': 'config'
+            '.xml': 'config', '.ini': 'config', '.ipynb': 'notebook'
+
         }
 
         # RAG Engine sera initialisé de manière asynchrone
