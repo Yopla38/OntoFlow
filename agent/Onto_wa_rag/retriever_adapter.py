@@ -94,7 +94,7 @@ def init_retriever(notebook_path: str):
 
 if __name__ == "__main__":
     # Path to your test notebook
-    nb_path = "2-aiengine/OntoFlow/agent/Onto_wa_rag/jupyter_analysis/test.ipynb"
+    nb_path = "/home/yopla/PycharmProjects/llm-hackathon-2025/2-aiengine/OntoFlow/downloaded_docs/lessons/ComplexityReduction.ipynb"
     retriever = init_retriever(nb_path)
 
     # Better query for this notebook

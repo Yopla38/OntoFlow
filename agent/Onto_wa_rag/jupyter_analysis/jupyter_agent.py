@@ -23,6 +23,7 @@ from ..fortran_analysis.core.entity_manager import UnifiedEntity
 from ..fortran_analysis.providers.consult import FortranEntityExplorer
 from .entity_explorer_jupyter import JupyterEntityExplorer
 from ..provider.llm_providers import LLMProvider
+from ..retriever_adapter import SimpleRetriever
 
 logger = logging.getLogger(__name__)
 
@@ -350,6 +351,7 @@ class CodeAnalysisAgent:
         # ✅ NOUVEAU : Système de tracking des sources
         self.sources_used: Dict[str, SourceReference] = {}
         self.reference_counter = 0
+        self.semantic_retriever = SimpleRetriever()
 
     def build_unified_system_prompt(self) -> str:
         """Construit le prompt système pour l'agent unifié avec emphasis sur les citations."""
@@ -394,9 +396,10 @@ class CodeAnalysisAgent:
 
         tool_descriptions = f"""
 <outils>
+    - `semantic_search`: **🔍 OUTIL DE RECHERCHE SÉMANTIQUE** - Recherche par similarité dans le contenu des notebooks. Idéal pour "comment faire X", "exemples de Y", concepts techniques.
     - `find_entity_by_name`: **OUTIL DE DÉMARRAGE RAPIDE.** Fonctionne avec {lang_description}.
+    - `list_entities`: **OUTIL DE DÉCOUVERTE STRUCTURELLE.** Recherche par attributs structurels (type, nom exact, parent).
     - `get_entity_report`: **OUTIL D'INSPECTION DÉTAILLÉE.** Rapport complet d'une entité.
-    - `list_entities`: **OUTIL DE DÉCOUVERTE EXHAUSTIVE.** Recherche par concept ou attributs.
     - `get_relations`: **OUTIL D'ENQUÊTE.** Relations/références d'une entité.
 """
 
@@ -408,6 +411,12 @@ class CodeAnalysisAgent:
         tool_descriptions += """
     - `ask_for_clarification`: **OUTIL DE DIALOGUE.** Pour clarifier les requêtes ambiguës.
     - `final_answer`: **OUTIL DE CONCLUSION.** Le système ajoutera automatiquement les citations des sources consultées.
+
+**STRATÉGIE DE CHOIX D'OUTIL :**
+- Pour "comment faire X", "exemples de Y", questions conceptuelles → `semantic_search`
+- Pour "quelle est l'entité X", recherche par nom → `find_entity_by_name`
+- Pour "lister les entités de type Y" → `list_entities`
+- Pour analyser une entité précise → `get_entity_report`
 </outils>
 
 **INSTRUCTIONS POUR LA RÉPONSE FINALE :**
@@ -751,6 +760,9 @@ class CodeAnalysisAgent:
         print(f"📋 Arguments: {args_dict}")
 
         try:
+            if tool_name == "semantic_search":
+                return await self._execute_semantic_search(**args_dict)
+
             if tool_name == "get_notebook_overview":
                 if not self.jupyter_explorer:
                     error = "Erreur: Aucun explorateur Jupyter disponible."
@@ -843,6 +855,61 @@ class CodeAnalysisAgent:
             logger.error(f"Erreur lors de l'exécution de l'outil '{tool_name}': {e}", exc_info=True)
             print(f"❌ {error_msg}")
             return error_msg
+
+    async def _execute_semantic_search(self, query: str, max_results: int = 5, min_confidence: float = 0.3) -> Dict[
+        str, Any]:
+        """Exécute une recherche sémantique dans les notebooks."""
+        print(f"🔍 Recherche sémantique pour: '{query}'")
+        print(f"   📊 Paramètres: max_results={max_results}, min_confidence={min_confidence}")
+
+        if len(self.semantic_retriever.chunks) == 0:
+            error_msg = "Index sémantique vide. Aucun notebook indexé."
+            print(f"   ❌ {error_msg}")
+            return {"error": error_msg}
+
+        results = self.semantic_retriever.query(query, k=max_results, min_score=min_confidence)
+
+        if not results:
+            print(f"   ❌ Aucun résultat au-dessus du seuil de confiance {min_confidence}")
+            return {
+                "query": query,
+                "results": [],
+                "total_indexed_chunks": len(self.semantic_retriever.chunks),
+                "message": f"Aucun contenu pertinent trouvé (seuil: {min_confidence})"
+            }
+
+        print(f"   ✅ {len(results)} résultats trouvés")
+        for i, result in enumerate(results, 1):
+            score = result["similarity_score"]
+            source = result["source_filename"]
+            tokens = result.get("tokens", "?")
+            print(f"      {i}. {source} - Score: {score:.3f} ({tokens} tokens)")
+
+        # Créer des SourceReference pour le tracking
+        sources_created = []
+        for result in results:
+            source_ref = SourceReference(
+                entity_name=f"semantic_chunk_{len(self.sources_used) + 1}",
+                entity_type="semantic_content",
+                filepath=result.get("source_file", "unknown"),
+                filename=result.get("source_filename", "unknown"),
+                start_line=1,
+                end_line=1,  # Les chunks n'ont pas de lignes précises
+                source_type="jupyter",
+                tool_used="semantic_search",
+                reference_id=f"S{self.reference_counter + len(sources_created) + 1}"
+            )
+            sources_created.append(source_ref.reference_id)
+            self.sources_used[source_ref.reference_id] = source_ref
+
+        self.reference_counter += len(sources_created)
+
+        return {
+            "query": query,
+            "results": results,
+            "total_indexed_chunks": len(self.semantic_retriever.chunks),
+            "sources_tracked": sources_created
+        }
 
     async def _execute_tool_on_explorer_detailed(self, tool_name: str, args_dict: Dict, explorer,
                                                  explorer_type: str) -> Any:
