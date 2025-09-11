@@ -6,12 +6,12 @@ import sys
 import nest_asyncio
 
 
-from agent.agent.Onto_wa_rag.Integration_fortran_RAG import OntoRAG
-from agent.agent.Onto_wa_rag.CONSTANT import (
+from agent.Onto_wa_rag.Integration_fortran_RAG import OntoRAG
+from agent.Onto_wa_rag.CONSTANT import (
     API_KEY_PATH, CHUNK_SIZE, CHUNK_OVERLAP, ONTOLOGY_PATH_TTL,
     MAX_CONCURRENT, MAX_RESULTS, STORAGE_DIR
 )
-from agent.agent.Onto_wa_rag.fortran_analysis.providers.consult import FortranEntityExplorer
+from agent.Onto_wa_rag.fortran_analysis.providers.consult import FortranEntityExplorer
 
 # --- Imports IPython Magic ---
 from IPython.core.magic import Magics, magics_class, line_cell_magic

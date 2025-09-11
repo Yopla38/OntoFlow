@@ -25,7 +25,7 @@ from agent.src.factory.simple_agent_factory import SimpleAgentFactory
 from agent.src.types.roles_definition import select_role
 from agent.src.utils.utilitaires import generate_tree_llm
 
-from CONSTANT import NB_ITERATION_IMPROVMENT, MODEL_AGREGATEUR
+from agent.CONSTANT import NB_ITERATION_IMPROVMENT, MODEL_AGREGATEUR
 
 from .src.agents.agregateur_agent import AiderCodeAggregator
 

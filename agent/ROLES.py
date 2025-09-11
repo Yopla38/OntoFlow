@@ -8,7 +8,7 @@
     ------------------------------------------
     """
 
-from CONSTANT import MODEL_HIGH
+from agent.CONSTANT import MODEL_HIGH
 
 
 def mes_roles(tree):

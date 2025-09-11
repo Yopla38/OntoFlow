@@ -27,9 +27,9 @@ from agent.src.components.file_manager import FileManager
 from agent.src.components.task_manager import TaskManager
 from agent.src.types.interfaces import LLMProvider, MemoryProvider
 
-#from agent.Onto_wa_rag.RAG_context_provider import RagTools, rag_fc_jarvis
-from agent.Onto_wa_rag.provider.get_key import get_openai_key
-from agent.Onto_wa_rag.CONSTANT import API_KEY_PATH, ONTOLOGY_PATH_TTL
+from ...agent.Onto_wa_rag.RAG_context_provider import RagTools, rag_fc_jarvis
+from ...agent.Onto_wa_rag.provider.get_key import get_openai_key
+from ...agent.Onto_wa_rag.CONSTANT import API_KEY_PATH, ONTOLOGY_PATH_TTL
 
 
 class RagAgent(Agent):

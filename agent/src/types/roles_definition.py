@@ -16,9 +16,9 @@ from typing import Dict, Any
 
 from agent.src.utils.utilitaires import generate_tree_llm
 
-from CONSTANT import MODEL_HIGH
+#from .CONSTANT import MODEL_HIGH
 
-from ROLES import mes_roles
+from ...ROLES import mes_roles
 
 
 def get_files_content(base_dir: str, tree: str) -> str:
