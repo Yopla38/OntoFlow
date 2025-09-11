@@ -158,8 +158,15 @@ class OntoDocumentProcessor(DocumentProcessor):
                 chunks.append({
                     "id": f"{document_id}_chunk_{i}",
                     "content": c["content"],
-                    "metadata": {**metadata, "tokens": c["tokens"], "source": str(filepath)}
+                    "metadata": {
+                        **metadata, 
+                        "tokens": c["tokens"], 
+                        "file_type":"notebook",
+                        "source": str(filepath)}
                       })
+            # Insérer dans le magasin de documents du RAG
+            await self._add_document_with_chunks(filepath, document_id, chunks, metadata)
+            return document_id, chunks
 
 
         # Utiliser le chunker approprié selon le type de fichier
