@@ -1,7 +1,6 @@
 ## 1. Installation
-```bash
 Create a new environnement (tested with python 3.10)
-
+```bash
 cd 2-aiengine/OntoFlow/agent
 pip install -r requirements.txt
 python -m pip install aider-install
