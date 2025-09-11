@@ -145,32 +145,9 @@ class OntoDocumentProcessor(DocumentProcessor):
 
         # Fusionner les métadonnées
         metadata = {**doc_metadata, **(additional_metadata or {})}
-        # === Notebook Handler (NEW) ===
-        if file_type == 'notebook':
-            print(f"✂️  Utilisation du retriever spécialisé pour notebooks: {Path(filepath).name}")
-            from OntoFlow.agent.Onto_wa_rag.retriever_adapter import SimpleRetriever
-            retriever = SimpleRetriever()
-            retriever.build_index_from_notebook(str(filepath))
-
-        # Convertir les chunks du retriever dans le format OntoRAG
-            chunks = []
-            for i, c in enumerate(retriever.chunks):
-                chunks.append({
-                    "id": f"{document_id}_chunk_{i}",
-                    "content": c["content"],
-                    "metadata": {
-                        **metadata, 
-                        "tokens": c["tokens"], 
-                        "file_type":"notebook",
-                        "source": str(filepath)}
-                      })
-            # Insérer dans le magasin de documents du RAG
-            await self._add_document_with_chunks(filepath, document_id, chunks, metadata)
-            return document_id, chunks
-
 
         # Utiliser le chunker approprié selon le type de fichier
-        elif file_type == 'fortran':
+        if file_type == 'fortran':
             print(f"✂️  Utilisation du chunker Fortran sémantique")
 
             if not self.fortran_processor:
