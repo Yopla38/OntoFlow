@@ -391,12 +391,13 @@ class OntoRAG:
         self.agent_fortran = FortranAgent(llm_provider=self.rag_engine.llm_provider, explorer=self.entity_explorer,
                                           max_steps=FORTRAN_AGENT_NB_STEP)
         """
+        # TODO if fortran + notebook then uncomment
         self.unified_agent = CodeAnalysisAgent(
                                                 llm_provider=self.rag_engine.llm_provider,
-                                                fortran_explorer=FortranEntityExplorer(
-                                                    self.custom_processor.fortran_processor.entity_manager,
-                                                    self.ontology_manager
-                                                ),
+                                                #fortran_explorer=FortranEntityExplorer(
+                                                #   self.custom_processor.fortran_processor.entity_manager,
+                                                #    self.ontology_manager
+                                                #),
                                                 jupyter_explorer=JupyterEntityExplorer(
                                                     self.custom_processor.jupyter_processor.entity_manager,
                                                     self.ontology_manager
@@ -1354,7 +1355,7 @@ class OntoRAG:
     async def query(
             self,
             question: str,
-            max_results: int = 5,
+            max_results: int = 10,
             file_types: Optional[List[str]] = None,
             projects: Optional[List[str]] = None,
             use_ontology: bool = True
@@ -1400,7 +1401,226 @@ class OntoRAG:
             self.logger.error(f"Erreur lors de la requête: {e}")
             return {"error": f"Erreur lors de la requête: {str(e)}"}
 
-    async def ask(self, query: str):
+    async def ask(self, query: str, max_results: int = 5, min_score: float = 0.25,
+                  show_chunks: bool = False) -> Dict[str, Any]:
+        """
+        RAG complet : recherche + génération de réponse.
+
+        Args:
+            query: Question
+            max_results: Nombre max de chunks à utiliser
+            min_score: Score minimum de similarité
+            show_chunks: Si True, affiche aussi les chunks bruts
+
+        Returns:
+            Dictionnaire avec answer, sources, etc.
+        """
+        retriever = self.unified_agent.semantic_retriever
+        # Réindexation à la demande si nécessaire
+        if len(retriever.chunks) == 0:
+            print("  🔄 Index vide, construction automatique...")
+            notebook_count = retriever.build_index_from_existing_chunks(self)
+
+            if notebook_count == 0:
+                print(f"""❌ **Aucun notebook disponible**
+
+    Les documents indexés ne contiennent pas de notebooks Jupyter (.ipynb).
+
+    **Alternatives :**
+    - `/search {query}` pour la recherche classique
+    - `/list` pour voir les documents disponibles""")
+                return
+
+        # 1. Effectuer la recherche sémantique
+        results = retriever.query(query, k=max_results)
+
+        if not results:
+            print(f"""### 🔍 Recherche : "{query}"
+
+            ❌ **Aucun résultat trouvé** (seuil de similarité : 0.25)
+
+            **Suggestions :**
+            - Essayez des termes plus généraux
+            - `/agent {query}` pour une analyse approfondie  
+            - `/search {query}` pour la recherche classique""")
+            return
+
+        # 2. Générer la réponse avec le LLM
+        print(f"  🤖 Génération de la réponse avec {len(results)} chunks de contexte...")
+
+        try:
+            answer, sources_info = await self._generate_response(query, results)
+
+            # 3. Afficher la réponse complète
+            await self._display_rag_response(query, answer, results, sources_info)
+
+        except Exception as e:
+            print(f"❌ Erreur génération réponse: {e}")
+            # Fallback : afficher les chunks bruts
+            print("⚠️ **Erreur de génération LLM**, affichage des chunks bruts :")
+            #await self._display_simple_search_results(query, results)
+
+    async def _generate_response(self, query: str, results: List[Dict[str, Any]]) -> Tuple[str, List[Dict]]:
+        """Génère une réponse avec le LLM."""
+        # Construire le contexte
+        context_parts = []
+        sources_info = []
+
+        for i, result in enumerate(results, 1):
+            source_filename = result.get("source_filename", "Unknown")
+            content = result.get("content", "")
+            similarity_score = result.get("similarity_score", 0.0)
+
+            context_parts.append(f"[Source {i}] De {source_filename} (score: {similarity_score:.3f}):\n{content}")
+
+            sources_info.append({
+                "index": i,
+                "filename": source_filename,
+                "score": similarity_score,
+                "tokens": result.get("tokens", "?")
+            })
+
+        context = "\n\n".join(context_parts)
+
+        # Prompt pour le LLM
+        system_prompt = """You are an expert assistant that answers questions by ALWAYS citing the provided context.
+
+        IMPORTANT INSTRUCTIONS:
+        - Use ONLY the information given in the context (from Jupyter Notebook parsing and ontology).
+        - You MUST cite your sources with [Source N].
+        - Organize your response in a clear and practical way.
+        - DO NOT invent information.
+        - Your role is to support a supervising agent that will automatically generate a Jupyter Notebook for scientific computation.
+        - If relevant, suggest how code cells and markdown cells should be structured in the final notebook.
+
+        Example: "According to [Source 1], the calculation should start with importing the BigDFT module..." 
+        """
+
+        user_prompt = f"""Question: {query}
+
+        Available Context (from retrieved notebook chunks and ontology):
+        {context}
+
+        Answer the question by using exclusively the provided context and citing the sources. 
+        Frame your response as actionable guidance that can help the supervising agent build a well-structured Jupyter Notebook for the requested computation."""
+
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt}
+        ]
+
+        response = await self.rag_engine.llm_provider.generate_response(messages, temperature=0.3)
+
+        return response, sources_info
+
+    async def _display_rag_response(self, query: str, answer: str, results: List[Dict], sources_info: List[Dict]):
+        """Affiche la réponse RAG complète avec métadonnées."""
+
+        # En-tête avec statistiques
+        total_indexed = len(self.unified_agent.semantic_retriever.chunks)
+        indexed_files_count = len(self.unified_agent.semantic_retriever.indexed_files)
+        avg_score = sum(r.get("similarity_score", 0) for r in results) / len(results)
+
+        header = f"""### 🤖 Réponse RAG : "{query}"
+
+    📊 **Contexte :** {len(results)} chunks sélectionnés sur {total_indexed} disponibles ({indexed_files_count} notebooks) | **Score moyen :** {avg_score:.3f}
+
+    ---
+
+    """
+
+        # Corps de la réponse
+        response_body = f"""### 💡 Réponse
+
+    {answer}
+
+    ---
+
+    """
+
+        # Sources détaillées
+        sources_section = "### 📚 Sources utilisées\n\n"
+        for source in sources_info:
+            score_bar = "🟢" * int(source["score"] * 10) + "⚪" * (10 - int(source["score"] * 10))
+            sources_section += f"""**[Source {source['index']}]** `{source['filename']}` | Score: {source['score']:.3f} {score_bar} | Tokens: {source['tokens']}\n\n"""
+
+        # Actions suggérées
+        footer = f"""
+    ---
+
+    ### 💡 Actions suggérées
+
+    - **Analyse approfondie :** `%rag /agent {query}`
+    - **Plus de contexte :** `%rag /simple_search_more {query}`  
+    - **Voir les chunks bruts :** `%rag /simple_search_raw {query}`
+    """
+
+        # Afficher tout
+        print(header + response_body + sources_section)
+
+    def _display_result(self, result: Dict[str, Any]):
+        """Affiche le résultat de manière formatée."""
+        from IPython.display import display, Markdown
+
+        query = result["query"]
+        answer = result["answer"]
+        sources = result["sources"]
+        stats = f"{result['chunks_found']} chunks | Score moyen: {result.get('avg_similarity', 0):.3f}"
+        notebooks = ", ".join(result.get('notebooks_used', []))
+
+        markdown_content = f"""
+### 🤖 Réponse RAG
+
+**Question :** {query}  
+**Contexte :** {stats}  
+**Notebooks :** {notebooks}
+
+---
+
+### 💡 Réponse
+
+{answer}
+
+---
+
+### 📚 Sources utilisées
+"""
+
+        for source in sources:
+            score_bar = "🟢" * int(source["score"] * 10) + "⚪" * (10 - int(source["score"] * 10))
+            markdown_content += f"""
+**[Source {source['index']}]** `{source['filename']}` | Score: {source['score']:.3f} {score_bar} | Tokens: {source['tokens']}
+"""
+
+        display(Markdown(markdown_content))
+
+    def _display_chunks(self, results: List[Dict[str, Any]]):
+        """Affiche les chunks bruts."""
+        for i, result in enumerate(results, 1):
+            score = result["similarity_score"]
+            source = result["source_filename"]
+            content = result["content"]
+
+            print(f"\n[{i}] {source} (Score: {score:.3f})")
+            print("-" * 50)
+            print(content[:500] + "..." if len(content) > 500 else content)
+
+    def get_stats(self) -> Dict[str, Any]:
+        """Retourne les statistiques de l'index."""
+        if not self._index_built:
+            return {"error": "Index non construit"}
+
+        notebook_files = [Path(fp).name for fp in self.indexed_files]
+
+        return {
+            "chunks_indexed": len(self.chunks),
+            "notebooks_indexed": len(self.indexed_files),
+            "notebook_files": notebook_files,
+            "model_name": self.model._model_name if hasattr(self.model, '_model_name') else "unknown",
+            "index_ready": True
+        }
+
+    async def old_ask(self, query: str):
         """
         Point d'entrée unifié pour toutes les questions.
         Route la requête vers le bon outil et formate la sortie.

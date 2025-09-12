@@ -107,11 +107,16 @@ async def example_usage():
                 await display_document_list(docs)
 
             elif query.startswith('/stats'):
+                # TODO to update with jupyter entity manager
                 detail = query[6:].strip()
                 if detail == 'fortran':
                     fortran_stats = await rag.get_fortran_stats()
                     print("📊 Statistiques Fortran:")
                     print(json.dumps(fortran_stats, indent=2))
+                if detail == 'jupyter':
+                    jupyter_stats = await rag.get_jupyter_stats()
+                    print("📊 Statistiques Jupyter:")
+                    print(json.dumps(jupyter_stats, indent=2))
                 elif detail == 'entity':
                     entity_stats = await rag.get_entity_manager_stats()
                     print("📊 Statistiques EntityManager fortran:")
