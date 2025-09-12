@@ -133,6 +133,12 @@ class OntoRAGMagic(Magics):
     async def _handle_agent_run(self, user_input: str):
         """Gère un tour de conversation avec l'agent unifié."""
         print("🧠 L'agent réfléchit...")
+        retriever = self.rag.unified_agent.semantic_retriever
+
+        # Réindexation à la demande si nécessaire
+        if len(retriever.chunks) == 0:
+            print("  🔄 Index vide, construction automatique...")
+            notebook_count = retriever.build_index_from_existing_chunks(self.rag)
 
         # ✅ UTILISER L'AGENT UNIFIÉ avec la version structurée
         agent_response = await self.rag.unified_agent.run(user_input, use_memory=True)
