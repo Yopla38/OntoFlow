@@ -1,73 +1,10 @@
 DOCUMENTS = [
-    # --- School ---
-    {"filepath": "downloaded_docs/school/System-Manipulation.ipynb", "project_name": "BigDFT", "version": "1.9"},
-    {"filepath": "downloaded_docs/school/Introduction.ipynb", "project_name": "BigDFT", "version": "1.9"},
-    {"filepath": "downloaded_docs/school/System-Generation.ipynb", "project_name": "BigDFT", "version": "1.9"},
-    {"filepath": "downloaded_docs/school/QuickStart.ipynb", "project_name": "BigDFT", "version": "1.9"},
-    {"filepath": "downloaded_docs/school/CMDStart.ipynb", "project_name": "BigDFT", "version": "1.9"},
-    {"filepath": "downloaded_docs/school/implicit-solvation.ipynb", "project_name": "BigDFT", "version": "1.9"},
-    {"filepath": "downloaded_docs/school/InitialRunsLinearScaling.ipynb", "project_name": "BigDFT", "version": "1.9"},
-    {"filepath": "downloaded_docs/school/InitialRuns.ipynb", "project_name": "BigDFT", "version": "1.9"},
-
-    # --- Tutorials ---
-    {"filepath": "downloaded_docs/tutorials/IO.ipynb", "project_name": "BigDFT", "version": "1.9"},
-    {"filepath": "downloaded_docs/tutorials/Rototranslations.ipynb", "project_name": "BigDFT", "version": "1.9"},
-    {"filepath": "downloaded_docs/tutorials/N2-solution.ipynb", "project_name": "BigDFT", "version": "1.9"},
-    {"filepath": "downloaded_docs/tutorials/Interoperability-Visualization.ipynb", "project_name": "BigDFT", "version": "1.9"},
-    {"filepath": "downloaded_docs/tutorials/CH4.ipynb", "project_name": "BigDFT", "version": "1.9"},
-    {"filepath": "downloaded_docs/tutorials/DoS-Manipulation.ipynb", "project_name": "BigDFT", "version": "1.9"},
-    {"filepath": "downloaded_docs/tutorials/Systems.ipynb", "project_name": "BigDFT", "version": "1.9"},
-    {"filepath": "downloaded_docs/tutorials/SolidState.ipynb", "project_name": "BigDFT", "version": "1.9"},
-    {"filepath": "downloaded_docs/tutorials/CH4_aiida.ipynb", "project_name": "BigDFT", "version": "1.9"},
-    {"filepath": "downloaded_docs/tutorials/Tight-Binding.ipynb", "project_name": "BigDFT", "version": "1.9"},
-    {"filepath": "downloaded_docs/tutorials/N2.ipynb", "project_name": "BigDFT", "version": "1.9"},
-    {"filepath": "downloaded_docs/tutorials/PDoS.ipynb", "project_name": "BigDFT", "version": "1.9"},
-    {"filepath": "downloaded_docs/tutorials/Logfile-basics.ipynb", "project_name": "BigDFT", "version": "1.9"},
-    {"filepath": "downloaded_docs/tutorials/Datasets.ipynb", "project_name": "BigDFT", "version": "1.9"},
-    {"filepath": "downloaded_docs/tutorials/CalculatorsExamples.ipynb", "project_name": "BigDFT", "version": "1.9"},
-    {"filepath": "downloaded_docs/tutorials/Interoperability-Simulation.ipynb", "project_name": "BigDFT", "version": "1.9"},
-
-    # --- Lessons ---
-    {"filepath": "downloaded_docs/lessons/MachineLearning.ipynb", "project_name": "BigDFT", "version": "1.9"},
-    {"filepath": "downloaded_docs/lessons/ComplexityReduction.ipynb", "project_name": "BigDFT", "version": "1.9"},
-    {"filepath": "downloaded_docs/lessons/Gaussian.ipynb", "project_name": "BigDFT", "version": "1.9"},
-    {"filepath": "downloaded_docs/lessons/GeometryOptimization.ipynb", "project_name": "BigDFT", "version": "1.9"},
-    {"filepath": "downloaded_docs/lessons/MolecularDynamics.ipynb", "project_name": "BigDFT", "version": "1.9"},
+    {"filepath": "../../1-humandoc/01-QuickStart.ipynb", "project_name": "BigDFT", "version": "1.9"},
+    {"filepath": "../../1-humandoc/02-N2.ipynb", "project_name": "BigDFT", "version": "1.9"},
+    {"filepath": "../../1-humandoc/03-BasisSetConvergence.ipynb", "project_name": "BigDFT", "version": "1.9"},
+    {"filepath": "../../1-humandoc/04-BasisSetComparison.ipynb", "project_name": "BigDFT", "version": "1.9"},
+    {"filepath": "../../1-humandoc/05-LinearScaling-QuickStart.ipynb", "project_name": "BigDFT", "version": "1.9"},
+    {"filepath": "../../1-humandoc/06-LinearScaling.ipynb", "project_name": "BigDFT", "version": "1.9"}
 ]
 
-
-DOCUMENTS_URL = [
-    {"filepath": "https://gitlab.com/l_sim/bigdft-suite/-/raw/devel/bigdft-doc/school/System-Manipulation.ipynb", "project_name": "BigDFT", "version": "1.9"},
-    {"filepath": "https://gitlab.com/l_sim/bigdft-suite/-/raw/devel/bigdft-doc/school/Introduction.ipynb", "project_name": "BigDFT", "version": "1.9"},
-    {"filepath": "https://gitlab.com/l_sim/bigdft-suite/-/raw/devel/bigdft-doc/school/System-Generation.ipynb", "project_name": "BigDFT", "version": "1.9"},
-    {"filepath": "https://gitlab.com/l_sim/bigdft-suite/-/raw/devel/bigdft-doc/school/QuickStart.ipynb", "project_name": "BigDFT", "version": "1.9"},
-    {"filepath": "https://gitlab.com/l_sim/bigdft-suite/-/raw/devel/bigdft-doc/school/CMDStart.ipynb", "project_name": "BigDFT", "version": "1.9"},
-    {"filepath": "https://gitlab.com/l_sim/bigdft-suite/-/raw/devel/bigdft-doc/school/implicit-solvation.ipynb", "project_name": "BigDFT", "version": "1.9"},
-    {"filepath": "https://gitlab.com/l_sim/bigdft-suite/-/raw/devel/bigdft-doc/school/InitialRunsLinearScaling.ipynb", "project_name": "BigDFT", "version": "1.9"},
-    {"filepath": "https://gitlab.com/l_sim/bigdft-suite/-/raw/devel/bigdft-doc/school/InitialRuns.ipynb",
-     "project_name": "BigDFT", "version": "1.9"},
-
-
-    {"filepath": "https://gitlab.com/l_sim/bigdft-suite/-/raw/devel/bigdft-doc/tutorials/IO.ipynb", "project_name": "BigDFT", "version": "1.9"},
-    {"filepath": "https://gitlab.com/l_sim/bigdft-suite/-/raw/devel/bigdft-doc/tutorials/Rototranslations.ipynb", "project_name": "BigDFT", "version": "1.9"},
-    {"filepath": "https://gitlab.com/l_sim/bigdft-suite/-/raw/devel/bigdft-doc/tutorials/N2-solution.ipynb", "project_name": "BigDFT", "version": "1.9"},
-    {"filepath": "https://gitlab.com/l_sim/bigdft-suite/-/raw/devel/bigdft-doc/tutorials/Interoperability-Visualization.ipynb", "project_name": "BigDFT", "version": "1.9"},
-    {"filepath": "https://gitlab.com/l_sim/bigdft-suite/-/raw/devel/bigdft-doc/tutorials/CH4.ipynb", "project_name": "BigDFT", "version": "1.9"},
-    {"filepath": "https://gitlab.com/l_sim/bigdft-suite/-/raw/devel/bigdft-doc/tutorials/DoS-Manipulation.ipynb", "project_name": "BigDFT", "version": "1.9"},
-    {"filepath": "https://gitlab.com/l_sim/bigdft-suite/-/raw/devel/bigdft-doc/tutorials/Systems.ipynb", "project_name": "BigDFT", "version": "1.9"},
-    {"filepath": "https://gitlab.com/l_sim/bigdft-suite/-/raw/devel/bigdft-doc/tutorials/SolidState.ipynb", "project_name": "BigDFT", "version": "1.9"},
-    {"filepath": "https://gitlab.com/l_sim/bigdft-suite/-/raw/devel/bigdft-doc/tutorials/CH4_aiida.ipynb", "project_name": "BigDFT", "version": "1.9"},
-    {"filepath": "https://gitlab.com/l_sim/bigdft-suite/-/raw/devel/bigdft-doc/tutorials/Tight-Binding.ipynb", "project_name": "BigDFT", "version": "1.9"},
-    {"filepath": "https://gitlab.com/l_sim/bigdft-suite/-/raw/devel/bigdft-doc/tutorials/N2.ipynb", "project_name": "BigDFT", "version": "1.9"},
-    {"filepath": "https://gitlab.com/l_sim/bigdft-suite/-/raw/devel/bigdft-doc/tutorials/PDoS.ipynb", "project_name": "BigDFT", "version": "1.9"},
-    {"filepath": "https://gitlab.com/l_sim/bigdft-suite/-/raw/devel/bigdft-doc/tutorials/Logfile-basics.ipynb", "project_name": "BigDFT", "version": "1.9"},
-    {"filepath": "https://gitlab.com/l_sim/bigdft-suite/-/raw/devel/bigdft-doc/tutorials/Datasets.ipynb", "project_name": "BigDFT", "version": "1.9"},
-    {"filepath": "https://gitlab.com/l_sim/bigdft-suite/-/raw/devel/bigdft-doc/tutorials/CalculatorsExamples.ipynb", "project_name": "BigDFT", "version": "1.9"},
-    {"filepath": "https://gitlab.com/l_sim/bigdft-suite/-/raw/devel/bigdft-doc/tutorials/Interoperability-Simulation.ipynb", "project_name": "BigDFT", "version": "1.9"},
-
-    {"filepath": "https://gitlab.com/l_sim/bigdft-suite/-/raw/devel/bigdft-doc/lessons/MachineLearning.ipynb", "project_name": "BigDFT", "version": "1.9"},
-    {"filepath": "https://gitlab.com/l_sim/bigdft-suite/-/raw/devel/bigdft-doc/lessons/ComplexityReduction.ipynb", "project_name": "BigDFT", "version": "1.9"},
-    {"filepath": "https://gitlab.com/l_sim/bigdft-suite/-/raw/devel/bigdft-doc/lessons/Gaussian.ipynb", "project_name": "BigDFT", "version": "1.9"},
-    {"filepath": "https://gitlab.com/l_sim/bigdft-suite/-/raw/devel/bigdft-doc/lessons/GeometryOptimization.ipynb", "project_name": "BigDFT", "version": "1.9"},
-    {"filepath": "https://gitlab.com/l_sim/bigdft-suite/-/raw/devel/bigdft-doc/lessons/MolecularDynamics.ipynb", "project_name": "BigDFT", "version": "1.9"},
-]
+DOCUMENTS_URL = []
