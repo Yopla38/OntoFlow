@@ -127,6 +127,139 @@ class OpenAIProvider(LLMProvider):
             logging.error(f"Error in generate_response_for_humain: {str(e)}")
             raise
 
+class VLLMProvider(OpenAIProvider):
+    """
+    OpenAI-compatible provider for a vLLM server.
+=    """
+    def __init__(
+        self,
+        model: str,
+        system_prompt: Optional[str] = None,
+        served_url: str = "http://127.0.0.1:8000",
+        api_key: str = "EMPTY",
+    ):
+        super().__init__(model=model, api_key=api_key, system_prompt=system_prompt)
+        served_url = served_url.rstrip("/")
+        self.base_url = f"{served_url}/v1"
+        try:
+            self.client = openai.AsyncClient(base_url=self.base_url, api_key=api_key)
+        except TypeError:
+            self.client = openai.AsyncOpenAI(base_url=self.base_url, api_key=api_key)
+
+    @retry(
+        wait=wait_random_exponential(min=1, max=40),
+        stop=stop_after_attempt(3),
+        retry=retry_if_exception_type(openai.APIError)
+    )
+    async def generate_response(
+        self,
+        messages: Union[str, List[Dict[str, str]]],
+        stream: bool = False,
+        pydantic_model: Optional[BaseModel] = None,
+        **kwargs
+    ) -> Union[str, Dict[str, Any], AsyncGenerator]:
+        """
+        Matches OpenAIProvider’s contract, but replaces the `beta.chat.completions.parse`
+        path with a local JSON→Pydantic validation (vLLM doesn’t implement that endpoint).
+        """
+        # Prepare messages (copying your OpenAIProvider behavior)
+        if isinstance(messages, str):
+            formatted_messages: List[Dict[str, str]] = []
+            if self.system_prompt:
+                formatted_messages.append({"role": "system", "content": self.system_prompt})
+            formatted_messages.append({"role": "user", "content": self._ensure_text_content(messages)})
+        else:
+            formatted_messages = messages
+
+        try:
+            if stream:
+                # Return the async streaming iterator (your code expects the raw stream)
+                return await self.client.chat.completions.create(
+                    model=self.model,
+                    messages=formatted_messages,
+                    stream=True,
+                    **kwargs
+                )
+
+            # Regular non-streaming completion
+            resp = await self.client.chat.completions.create(
+                model=self.model,
+                messages=formatted_messages,
+                stream=False,
+                **kwargs
+            )
+            content = (resp.choices[0].message.content if resp.choices else "") or ""
+
+            if pydantic_model is not None:
+                try:
+                    data = json.loads(content)
+                except json.JSONDecodeError as je:
+                    raise ValueError(
+                        "vLLM cannot use `beta.chat.completions.parse`. "
+                        "Ask the model to respond with strict JSON; received non-JSON content."
+                    ) from je
+                model_cls = pydantic_model if isinstance(pydantic_model, type) else type(pydantic_model)
+                parsed = model_cls.model_validate(data)
+                return parsed.model_dump()
+
+            return content
+
+        except openai.APIError as e:
+            logging.error(f"vLLM (OpenAI-compatible) API Error: {str(e)}")
+            raise
+        except Exception as e:
+            logging.error(f"Unexpected error in VLLMProvider.generate_response: {str(e)}")
+            raise
+
+
+    @staticmethod
+    def check_server(url: str = "http://127.0.0.1:8000") -> bool:
+        """
+        True if vLLM server responds 200 to GET /health.
+        Uses curl to avoid extra dependencies.
+        """
+        try:
+            subprocess.run(
+                ["curl", "-fsS", f"{url.rstrip('/')}/health"],
+                check=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            return True
+        except subprocess.CalledProcessError:
+            return False
+
+    @classmethod
+    def serve(
+        cls,
+        model: str,
+        port: int = 8000,
+        host: str = "0.0.0.0",
+        python_executable: str = sys.executable,
+        extra_args: Optional[List[str]] = None,
+        env: Optional[Dict[str, str]] = None,
+        detach: bool = True,
+    ) -> subprocess.Popen:
+        """
+        Launch a vLLM OpenAI-compatible server:
+        python -m vllm.entrypoints.openai.api_server --model <model> --port <port> --host <host> [extra_args...]
+        Example extra_args:
+            ["--tensor-parallel-size", "2", "--max-model-len", "32768", "--trust-remote-code"]
+        """
+        cmd = [
+            python_executable, "-m", "vllm.entrypoints.openai.api_server",
+            "--model", model,
+            "--port", str(port),
+            "--host", host,
+        ]
+        if extra_args:
+            cmd += list(extra_args)
+
+        popen_kwargs = {"env": (env or os.environ.copy())}
+        if detach:
+            popen_kwargs.update({"stdout": subprocess.PIPE, "stderr": subprocess.PIPE})
+
+        return subprocess.Popen(cmd, **popen_kwargs)
 
 class AnthropicProvider(LLMProvider):
     """
