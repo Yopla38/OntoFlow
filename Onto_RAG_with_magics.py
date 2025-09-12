@@ -26,52 +26,51 @@ nest_asyncio.apply()
 # ==============================================================================
 
 async def show_available_commands():
-    """Affiche toutes les commandes disponibles pour la magic."""
+    """Display all available commands for magic."""
     display(Markdown("""
-### ✨ ONTORAG - Commandes Magiques Disponibles ✨
+### ✨ ONTORAG - Available Magic Commands ✨
 
 ---
 
-#### 🔍 **Recherche (Modes Différents)**
-- **`<question>`**: (Sans `/`) **Recherche simple et rapide** avec similarité sémantique
-- **`/simple_search <query>`**: Recherche sémantique (5 résultats)
-- **`/simple_search_more <query>`**: Recherche sémantique (10 résultats)
-- **`/search <question>`**: Recherche classique du RAG avec réponse générée
-- **`/hierarchical <q>`**: Recherche hiérarchique sur plusieurs niveaux
+#### 🔍 **Search (Different Modes)**
+- **`<question>`**: (Without `/`) **Simple and fast search** with semantic similarity
+- **`/search <question>`**: Classic RAG search with generated response
+- **`/hierarchical <q>`**: Hierarchical search on multiple levels
 
 ---
 
-#### 🧠 **Agent Unifié (Analyse Approfondie)**
-- **`/agent <question>`**: **Analyse complète** avec l'agent unifié (Fortran + Jupyter)
-- **`/agent_reply <réponse>`**: Répond à une question de clarification de l'agent
-- **`/agent_memory`**: Affiche le résumé de la mémoire actuelle de l'agent
-- **`/agent_clear`**: Efface la mémoire de l'agent
-- **`/agent_sources`**: Affiche toutes les sources consultées dans la session
+#### 🧠 **Unified Agent (In-Depth Analysis)**
+- **`/agent <question>`**: **Complete analysis** with unified agent (Fortran + Jupyter)
+- **`/agent_reply <response>`**: Reply to a clarification question from the agent
+- **`/agent_memory`**: Display current agent memory summary
+- **`/agent_clear`**: Clear agent memory
+- **`/agent_sources`**: Display all sources consulted in the session
 
 ---
 
-#### 📁 **Gestion des Documents**
-- **`/add_docs <var_name>`**: Ajoute des documents depuis une variable Python
-- **`/list`**: Liste tous les documents indexés
-- **`/stats`**: Affiche les statistiques du RAG
+#### 📁 **Document Management**
+- **`/add_docs <var_name>`**: Add documents from a Python variable
+- **`/list`**: List all indexed documents
+- **`/stats`**: Display RAG statistics
 
 ---
 
-#### ❓ **Aide**
-- **`/help`**: Affiche ce message d'aide
+#### ❓ **Help**
+- **`/help`**: Display this help message
 
 ---
 
-### 🎯 **Quand utiliser quel mode ?**
+### 🎯 **When to use which mode?**
 
-| Mode | Cas d'usage | Vitesse | Précision |
-|------|-------------|---------|-----------|
-| **Recherche simple** (`query`) | Recherche rapide de contenu | ⚡⚡⚡ | 🎯🎯 |
-| **Recherche classique** (`/search`) | Question avec réponse générée | ⚡⚡ | 🎯🎯🎯 |
-| **Agent unifié** (`/agent`) | Analyse complexe, multi-fichiers | ⚡ | 🎯🎯🎯🎯 |
-| **Recherche hiérarchique** (`/hierarchical`) | Recherche structurée par niveaux | ⚡ | 🎯🎯🎯 |
+| Mode | Use Case | Speed | Precision |
+|------|----------|-------|-----------|
+| **Simple search** (`query`) | Quick content search | ⚡⚡⚡ | 🎯🎯 |
+| **Classic search** (`/search`) | Question with generated response | ⚡⚡ | 🎯🎯🎯 |
+| **Unified agent** (`/agent`) | Complex analysis, multi-file | ⚡ | 🎯🎯🎯🎯 |
+| **Hierarchical search** (`/hierarchical`) | Structured search by levels | ⚡ | 🎯🎯🎯 |
 
 """))
+
 
 async def display_query_result(result: Dict[str, Any]):
     """Affiche le résultat d'une query() standard."""
@@ -283,23 +282,23 @@ class OntoRAGMagic(Magics):
         context = "\n\n".join(context_parts)
 
         # 2. Construire le prompt pour le LLM
-        system_prompt = """Tu es un assistant expert qui répond aux questions en citant TOUJOURS ses sources.
+        system_prompt = """You are an expert assistant who answers questions by ALWAYS citing your sources.
 
-    Tu as accès aux sources suivantes provenant de notebooks Jupyter :
-    - Cite OBLIGATOIREMENT tes sources en utilisant [Source N] dans ta réponse
-    - Concentre-toi sur les informations les plus pertinentes
-    - Structure ta réponse de manière claire et pratique
-    - N'invente aucune information qui ne figure pas dans les sources
+You have access to the following sources from Jupyter notebooks:
+- OBLIGATORILY cite your sources using [Source N] in your response
+- Focus on the most relevant information
+- Structure your response in a clear and practical manner
+- Do not invent any information that is not found in the sources
 
-    Exemple de citation: "D'après [Source 1], pour créer une molécule..."
+Example citation: "According to [Source 1], to create a molecule..."
     """
 
         user_prompt = f"""Question: {query}
 
-    Contexte disponible:
+    Avalaible context:
     {context}
 
-    Réponds à la question en utilisant exclusivement les informations du contexte et en citant tes sources [Source N]."""
+    Answer the question using exclusively the information from the context and citing your sources [Source N]."""
 
         # 3. Appeler le LLM
         messages = [
