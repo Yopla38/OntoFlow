@@ -296,6 +296,13 @@ class AgentFinalAnswerArgs(BaseModel):
                       description="The final answer content WITHOUT manual source citations. The system will automatically add source references.")
 
 
+class AgentSemanticSearchArgs(BaseModel):
+    """Arguments pour la recherche sémantique."""
+    query: str = Field(..., description="The search query to find relevant content semantically.")
+    max_results: int = Field(5, description="Maximum number of results to return.")
+    min_confidence: float = Field(0.3, description="Minimum confidence score for results.")
+
+
 class AgentDecision(BaseModel):
     """Définit la pensée et l'action structurée de l'agent unifié."""
     thought: str = Field(...,
@@ -305,6 +312,7 @@ class AgentDecision(BaseModel):
     working_memory_candidates: Optional[List[str]] = Field(None,
                                                            description="La liste des noms d'entités qu'il reste à examiner.")
     tool_name: Literal[
+        "semantic_search",
         "find_entity_by_name",
         "list_entities",
         "get_entity_report",
@@ -315,6 +323,7 @@ class AgentDecision(BaseModel):
     ] = Field(...)
 
     arguments: Union[
+        AgentSemanticSearchArgs,
         AgentFindEntityByNameArgs,
         AgentListEntitiesArgs,
         AgentGetEntityReportArgs,
@@ -364,7 +373,7 @@ class CodeAnalysisAgent:
 
         lang_description = " et ".join(available_languages)
 
-        mission_and_process = f"""Tu es un agent expert autonome, spécialisé dans l'analyse de code {lang_description}. Ton travail doit être systématique, rigoureux et complet.
+        mission_and_process = f"""Tu es un agent expert autonome, spécialisé dans l'analyse de code {lang_description}. Tu as accès à des tutorial notebook. Ton travail doit être systématique, rigoureux et complet.
 
 **OBLIGATION CRITIQUE : TRAÇABILITÉ DES SOURCES**
 - Chaque information que tu utilises provient d'outils qui analysent des fichiers spécifiques
@@ -396,7 +405,7 @@ class CodeAnalysisAgent:
 
         tool_descriptions = f"""
 <outils>
-    - `semantic_search`: **🔍 OUTIL DE RECHERCHE SÉMANTIQUE** - Recherche par similarité dans le contenu des notebooks. Idéal pour "comment faire X", "exemples de Y", concepts techniques.
+    - `semantic_search`: **🔍 OUTIL DE RECHERCHE SÉMANTIQUE** - Recherche par similarité dans le contenu des notebooks. Idéal pour "comment faire X", "exemples de Y", "how can I", concepts techniques.
     - `find_entity_by_name`: **OUTIL DE DÉMARRAGE RAPIDE.** Fonctionne avec {lang_description}.
     - `list_entities`: **OUTIL DE DÉCOUVERTE STRUCTURELLE.** Recherche par attributs structurels (type, nom exact, parent).
     - `get_entity_report`: **OUTIL D'INSPECTION DÉTAILLÉE.** Rapport complet d'une entité.
@@ -413,6 +422,7 @@ class CodeAnalysisAgent:
     - `final_answer`: **OUTIL DE CONCLUSION.** Le système ajoutera automatiquement les citations des sources consultées.
 
 **STRATÉGIE DE CHOIX D'OUTIL :**
+- IMPORTANT: Toujours démarrer par une recherche sémantique
 - Pour "comment faire X", "exemples de Y", questions conceptuelles → `semantic_search`
 - Pour "quelle est l'entité X", recherche par nom → `find_entity_by_name`
 - Pour "lister les entités de type Y" → `list_entities`
@@ -867,7 +877,7 @@ class CodeAnalysisAgent:
             print(f"   ❌ {error_msg}")
             return {"error": error_msg}
 
-        results = self.semantic_retriever.query(query, k=max_results, min_score=min_confidence)
+        results = self.semantic_retriever.query(query, k=max_results)
 
         if not results:
             print(f"   ❌ Aucun résultat au-dessus du seuil de confiance {min_confidence}")
