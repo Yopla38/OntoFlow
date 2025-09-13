@@ -29,6 +29,9 @@ class GlobalContextProvider:
         self._dependency_graph_cache: Dict[str, Dict[str, Any]] = {}
         self._module_hierarchy_cache: Optional[Dict[str, Any]] = None
 
+        # Pour eviter corruption de données
+        self._lock = asyncio.Lock()
+
     async def get_global_context(self, entity_name: str, max_tokens: int = 3000) -> Dict[str, Any]:
         """Récupère le contexte global d'une entité"""
 
@@ -114,140 +117,141 @@ class GlobalContextProvider:
 
     async def _get_module_hierarchy(self, max_tokens: int) -> Dict[str, Any]:
         """Construit la hiérarchie complète des modules"""
-        if self._module_hierarchy_cache:
-            return self._module_hierarchy_cache
+        async with self._lock:
+            if self._module_hierarchy_cache:
+                return self._module_hierarchy_cache
 
-        all_modules = await self.entity_index.get_all_modules()
+            all_modules = await self.entity_index.get_all_modules()
 
-        hierarchy = {
-            "modules": {},
-            "dependency_tree": {},
-            "circular_dependencies": [],
-            "independent_modules": []
-        }
-
-        # Construire l'arbre de dépendances
-        for module_name, module_info in all_modules.items():
-            hierarchy["modules"][module_name] = {
-                "dependencies": module_info['dependencies'],
-                "children": module_info['children'],
-                "filepath": module_info['filepath'],
-                "concepts": [c.get('label', '') for c in module_info.get('concepts', [])][:3]
+            hierarchy = {
+                "modules": {},
+                "dependency_tree": {},
+                "circular_dependencies": [],
+                "independent_modules": []
             }
 
-        # Détecter les dépendances circulaires
-        hierarchy["circular_dependencies"] = await self._detect_circular_dependencies(all_modules)
+            # Construire l'arbre de dépendances
+            for module_name, module_info in all_modules.items():
+                hierarchy["modules"][module_name] = {
+                    "dependencies": module_info['dependencies'],
+                    "children": module_info['children'],
+                    "filepath": module_info['filepath'],
+                    "concepts": [c.get('label', '') for c in module_info.get('concepts', [])][:3]
+                }
 
-        # Identifier les modules indépendants (pas de dépendances)
-        hierarchy["independent_modules"] = [
-            name for name, info in all_modules.items()
-            if not info['dependencies']
-        ]
+            # Détecter les dépendances circulaires
+            hierarchy["circular_dependencies"] = await self._detect_circular_dependencies(all_modules)
 
-        # Construire l'arbre de dépendances
-        hierarchy["dependency_tree"] = await self._build_dependency_tree(all_modules)
+            # Identifier les modules indépendants (pas de dépendances)
+            hierarchy["independent_modules"] = [
+                name for name, info in all_modules.items()
+                if not info['dependencies']
+            ]
 
-        self._module_hierarchy_cache = hierarchy
-        return hierarchy
+            # Construire l'arbre de dépendances
+            hierarchy["dependency_tree"] = await self._build_dependency_tree(all_modules)
+
+            self._module_hierarchy_cache = hierarchy
+            return hierarchy
 
     async def _build_dependency_subgraph(self, root_chunk_id: str, depth: int = 2, max_tokens: int = 1000) -> Dict[
         str, Any]:
         """Construit un sous-graphe de dépendances centré sur une entité"""
+        async with self._lock:
+            # Vérifier le cache
+            cache_key = f"{root_chunk_id}_{depth}"
+            if cache_key in self._dependency_graph_cache:
+                return self._dependency_graph_cache[cache_key]
 
-        # Vérifier le cache
-        cache_key = f"{root_chunk_id}_{depth}"
-        if cache_key in self._dependency_graph_cache:
-            return self._dependency_graph_cache[cache_key]
+            root_entity_info = await self.entity_index.get_entity_info(root_chunk_id)
+            if not root_entity_info:
+                return {}
 
-        root_entity_info = await self.entity_index.get_entity_info(root_chunk_id)
-        if not root_entity_info:
-            return {}
-
-        subgraph = {
-            "root_entity": root_entity_info['name'],
-            "nodes": {},
-            "edges": [],
-            "levels": {},
-            "summary": {}
-        }
-
-        # BFS pour explorer les dépendances
-        visited = set()
-        queue = deque([(root_chunk_id, 0)])  # (chunk_id, level)
-
-        while queue and len(subgraph["nodes"]) < 20:  # Limiter la taille
-            chunk_id, level = queue.popleft()
-
-            if chunk_id in visited or level > depth:
-                continue
-
-            visited.add(chunk_id)
-            entity_info = await self.entity_index.get_entity_info(chunk_id)
-
-            if not entity_info:
-                continue
-
-            entity_name = entity_info['name']
-
-            # Ajouter le noeud
-            subgraph["nodes"][entity_name] = {
-                "type": entity_info['type'],
-                "file": entity_info['filepath'],
-                "level": level,
-                "chunk_id": chunk_id
+            subgraph = {
+                "root_entity": root_entity_info['name'],
+                "nodes": {},
+                "edges": [],
+                "levels": {},
+                "summary": {}
             }
 
-            # Ajouter au niveau approprié
-            if level not in subgraph["levels"]:
-                subgraph["levels"][level] = []
-            subgraph["levels"][level].append(entity_name)
+            # BFS pour explorer les dépendances
+            visited = set()
+            queue = deque([(root_chunk_id, 0)])  # (chunk_id, level)
 
-            # Explorer les dépendances directes
-            dependencies = entity_info.get('dependencies', [])
-            for dep in dependencies:
-                dep_chunks = await self.entity_index.find_entity(dep)
-                if dep_chunks:
-                    dep_chunk_id = dep_chunks[0]
+            while queue and len(subgraph["nodes"]) < 20:  # Limiter la taille
+                chunk_id, level = queue.popleft()
 
-                    # Ajouter l'arête
-                    subgraph["edges"].append({
-                        "from": entity_name,
-                        "to": dep,
-                        "type": "uses"
-                    })
+                if chunk_id in visited or level > depth:
+                    continue
 
-                    # Ajouter à la queue pour exploration
-                    if dep_chunk_id not in visited:
-                        queue.append((dep_chunk_id, level + 1))
+                visited.add(chunk_id)
+                entity_info = await self.entity_index.get_entity_info(chunk_id)
 
-            # Explorer les relations parent-enfant
-            children = await self.entity_index.get_children(entity_name)
-            for child in children:
-                child_chunks = await self.entity_index.find_entity(child)
-                if child_chunks:
-                    child_chunk_id = child_chunks[0]
+                if not entity_info:
+                    continue
 
-                    subgraph["edges"].append({
-                        "from": entity_name,
-                        "to": child,
-                        "type": "contains"
-                    })
+                entity_name = entity_info['name']
 
-                    if child_chunk_id not in visited:
-                        queue.append((child_chunk_id, level))  # Même niveau pour les enfants
+                # Ajouter le noeud
+                subgraph["nodes"][entity_name] = {
+                    "type": entity_info['type'],
+                    "file": entity_info['filepath'],
+                    "level": level,
+                    "chunk_id": chunk_id
+                }
 
-        # Générer le résumé
-        subgraph["summary"] = {
-            "total_nodes": len(subgraph["nodes"]),
-            "total_edges": len(subgraph["edges"]),
-            "max_depth": max(subgraph["levels"].keys()) if subgraph["levels"] else 0,
-            "node_types": self._count_node_types(subgraph["nodes"])
-        }
+                # Ajouter au niveau approprié
+                if level not in subgraph["levels"]:
+                    subgraph["levels"][level] = []
+                subgraph["levels"][level].append(entity_name)
 
-        # Mettre en cache
-        self._dependency_graph_cache[cache_key] = subgraph
+                # Explorer les dépendances directes
+                dependencies = entity_info.get('dependencies', [])
+                for dep in dependencies:
+                    dep_chunks = await self.entity_index.find_entity(dep)
+                    if dep_chunks:
+                        dep_chunk_id = dep_chunks[0]
 
-        return subgraph
+                        # Ajouter l'arête
+                        subgraph["edges"].append({
+                            "from": entity_name,
+                            "to": dep,
+                            "type": "uses"
+                        })
+
+                        # Ajouter à la queue pour exploration
+                        if dep_chunk_id not in visited:
+                            queue.append((dep_chunk_id, level + 1))
+
+                # Explorer les relations parent-enfant
+                children = await self.entity_index.get_children(entity_name)
+                for child in children:
+                    child_chunks = await self.entity_index.find_entity(child)
+                    if child_chunks:
+                        child_chunk_id = child_chunks[0]
+
+                        subgraph["edges"].append({
+                            "from": entity_name,
+                            "to": child,
+                            "type": "contains"
+                        })
+
+                        if child_chunk_id not in visited:
+                            queue.append((child_chunk_id, level))  # Même niveau pour les enfants
+
+            # Générer le résumé
+            subgraph["summary"] = {
+                "total_nodes": len(subgraph["nodes"]),
+                "total_edges": len(subgraph["edges"]),
+                "max_depth": max(subgraph["levels"].keys()) if subgraph["levels"] else 0,
+                "node_types": self._count_node_types(subgraph["nodes"])
+            }
+
+            # Mettre en cache
+            self._dependency_graph_cache[cache_key] = subgraph
+
+            return subgraph
 
     async def _analyze_impact(self, entity_name: str, entity_info: Dict[str, Any], max_tokens: int) -> Dict[str, Any]:
         """Analyse l'impact potentiel de modifications de l'entité"""
