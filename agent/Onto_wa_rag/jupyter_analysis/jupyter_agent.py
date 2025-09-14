@@ -28,6 +28,72 @@ from ..retriever_adapter import SimpleRetriever
 logger = logging.getLogger(__name__)
 
 
+class CodeExample(BaseModel):
+    """Exemple de code avec contexte, optimisé pour l'exécution sur HPC."""
+    language: Literal["python", "fortran", "bash", "text"] = Field(..., description="Langage du code")
+    code: str = Field(..., description="Le code complet, prêt à l'exécution")
+    explanation: str = Field(..., description="Explication de ce que fait cette fonction")
+    context: Optional[str] = Field(None, description="Contexte d'utilisation (optionnel)")
+
+    # ✅ CHAMPS pour HPC
+    function_name: Optional[str] = Field(None, description="Nom de la fonction principale si applicable")
+    is_complete_function: bool = Field(False, description="True si c'est une fonction complète avec imports")
+    required_modules: List[str] = Field(default_factory=list,
+                                        description="Liste des modules requis (ex: ['numpy', ...])")
+    execution_ready: bool = Field(False, description="True si le code est prêt pour exécution")
+
+
+class MarkdownSection(BaseModel):
+    """Section markdown avec titre et contenu."""
+    title: str = Field(..., description="Titre de la section")
+    content: str = Field(..., description="Contenu markdown de la section")
+    level: int = Field(2, description="Niveau de titre (1-6), défaut 2 pour ##")
+
+
+class Recommendation(BaseModel):
+    """Recommandation ou conseil pratique."""
+    title: str = Field(..., description="Titre de la recommandation")
+    description: str = Field(..., description="Description détaillée")
+    priority: Literal["high", "medium", "low"] = Field("medium", description="Priorité de la recommandation")
+    rationale: Optional[str] = Field(None, description="Justification de cette recommandation")
+
+
+class AgentStructuredAnswerArgs(BaseModel):
+    """Arguments pour une réponse finale structurée, adaptée aux notebooks."""
+
+    # Résumé exécutif obligatoire
+    executive_summary: str = Field(..., description="Résumé concis de la réponse (2-3 phrases max)")
+
+    # Sections principales (optionnelles)
+    introduction: Optional[str] = Field(None, description="Introduction contextuelle si nécessaire")
+
+    # Sections markdown structurées
+    markdown_sections: List[MarkdownSection] = Field(default_factory=list,
+                                                     description="Sections d'explication en markdown")
+
+    # Code pour HPC
+    code_examples: List[CodeExample] = Field(default_factory=list,
+                                             description="Fonctions complètes. Doit être auto-suffisant avec tous les imports.")
+
+    # Détails techniques
+    technical_details: Optional[str] = Field(None, description="Détails techniques approfondis si pertinents")
+
+    # Recommandations pratiques
+    recommendations: List[Recommendation] = Field(default_factory=list,
+                                                  description="Recommandations et bonnes pratiques")
+
+    # Conclusion
+    conclusion: Optional[str] = Field(None, description="Conclusion ou synthèse finale")
+
+    # Liens vers des ressources
+    related_entities: List[str] = Field(default_factory=list,
+                                        description="Noms d'entités liées à explorer")
+
+    answer_type: Literal["explanation", "tutorial", "analysis", "troubleshooting", "reference", "hpc_function"] = Field(
+        "explanation",
+        description="Type de réponse pour adapter le formatage. Utiliser 'hpc_function' pour des fonctions destinées au calcul haute performance")
+
+
 @dataclass
 class SourceReference:
     """Structure pour tracker les sources utilisées par l'agent."""
@@ -111,6 +177,9 @@ class AgentResponse:
     clarification_question: Optional[str] = None
     error_details: Optional[str] = None
 
+    # Add structured output for code extraction
+    structured_answer: Optional[AgentStructuredAnswerArgs] = None
+
     # Méthode d'extension de AgentResponse
     def _analyze_entities_and_findings(self):
         """Analyse les sources pour identifier les entités clés et les insights."""
@@ -163,20 +232,268 @@ class AgentResponse:
         else:
             self.confidence_level = 0.5
 
+    def to_notebook_cells(self) -> List[Dict[str, Any]]:
+        """Convertit la réponse structurée en cellules de notebook Jupyter."""
+        if not self.structured_answer:
+            # Fallback vers l'ancien format
+            return [{
+                "cell_type": "markdown",
+                "source": [self.answer]
+            }]
+
+        cells = []
+
+        # Résumé exécutif
+        cells.append({
+            "cell_type": "markdown",
+            "source": [f"# Réponse de l'Agent\n\n{self.structured_answer.executive_summary}"]
+        })
+
+        # Introduction si présente
+        if self.structured_answer.introduction:
+            cells.append({
+                "cell_type": "markdown",
+                "source": [f"## Introduction\n\n{self.structured_answer.introduction}"]
+            })
+
+        # Sections markdown
+        for section in self.structured_answer.markdown_sections:
+            title = "#" * section.level + " " + section.title
+            cells.append({
+                "cell_type": "markdown",
+                "source": [f"{title}\n\n{section.content}"]
+            })
+
+        # Exemples de code
+        for i, example in enumerate(self.structured_answer.code_examples, 1):
+            # Cellule markdown pour l'explication
+            cells.append({
+                "cell_type": "markdown",
+                "source": [f"### Exemple {i}: {example.explanation}\n\n{example.context or ''}"]
+            })
+
+            # Cellule de code
+            cells.append({
+                "cell_type": "code",
+                "source": [example.code],
+                "metadata": {"language": example.language}
+            })
+
+        # Détails techniques
+        if self.structured_answer.technical_details:
+            cells.append({
+                "cell_type": "markdown",
+                "source": [f"## Détails Techniques\n\n{self.structured_answer.technical_details}"]
+            })
+
+        # Recommandations
+        if self.structured_answer.recommendations:
+            reco_text = "## Recommandations\n\n"
+            for reco in self.structured_answer.recommendations:
+                priority_emoji = {"high": "🚨", "medium": "⚠️", "low": "💡"}[reco.priority]
+                reco_text += f"### {priority_emoji} {reco.title}\n\n{reco.description}\n\n"
+                if reco.rationale:
+                    reco_text += f"*Justification: {reco.rationale}*\n\n"
+
+            cells.append({
+                "cell_type": "markdown",
+                "source": [reco_text]
+            })
+
+        # Conclusion
+        if self.structured_answer.conclusion:
+            cells.append({
+                "cell_type": "markdown",
+                "source": [f"## Conclusion\n\n{self.structured_answer.conclusion}"]
+            })
+
+        # Sources
+        if self.sources_consulted:
+            sources_text = "## 📚 Sources consultées\n\n"
+            for source in self.sources_consulted:
+                sources_text += f"- {source.get_citation()}\n"
+
+            cells.append({
+                "cell_type": "markdown",
+                "source": [sources_text]
+            })
+
+        return cells
+
     def to_human_readable(self) -> str:
         """Convertit en format lisible pour un humain."""
-        output = [self.answer]
+        # Construire le contenu principal
+        if self.structured_answer:
+            main_content = self._convert_structured_to_text(self.structured_answer)
+        else:
+            main_content = self.answer
 
+        # Ajouter les sources directement
         if self.sources_consulted:
-            output.append("\n## 📚 Sources consultées :")
-            for source in self.sources_consulted:
-                output.append(f"\n{source.get_citation()}")
+            sources_section = "\n\n## 📚 Sources consultées :\n"
+            for source_ref in self.sources_consulted:
+                sources_section += f"\n{source_ref.get_citation()}"
+            return main_content + sources_section
+        else:
+            return main_content + "\n\n**Aucune source spécifique consultée.**"
 
-        return "".join(output)
+    def _convert_structured_to_text(self, structured: AgentStructuredAnswerArgs) -> str:
+        """Convertit une réponse structurée en texte simple pour compatibilité."""
+        parts = []
+
+        try:
+            # Executive summary (obligatoire)
+            if hasattr(structured, 'executive_summary') and structured.executive_summary:
+                parts.append(structured.executive_summary)
+
+            # Introduction (optionnelle)
+            if hasattr(structured, 'introduction') and structured.introduction:
+                parts.append(f"\n## Introduction\n{structured.introduction}")
+
+            # Sections markdown
+            if hasattr(structured, 'markdown_sections') and structured.markdown_sections:
+                for section in structured.markdown_sections:
+                    try:
+                        title = "#" * getattr(section, 'level', 2) + " " + getattr(section, 'title', 'Section')
+                        content = getattr(section, 'content', '')
+                        parts.append(f"\n{title}\n{content}")
+                    except Exception as e:
+                        parts.append(f"\n## Section\n[Erreur d'affichage de section: {e}]")
+
+            # Exemples de code
+            if hasattr(structured, 'code_examples') and structured.code_examples:
+                for i, example in enumerate(structured.code_examples, 1):
+                    try:
+                        explanation = getattr(example, 'explanation', f'Exemple {i}')
+                        language = getattr(example, 'language', 'python')
+                        code = getattr(example, 'code', '# Code non disponible')
+                        context = getattr(example, 'context', None)
+                        function_name = getattr(example, 'function_name', None)
+                        execution_ready = getattr(example, 'execution_ready', False)
+                        required_modules = getattr(example, 'required_modules', [])
+
+                        # En-tête de l'exemple
+                        header = f"\n### 💻 Exemple {i}: {explanation}"
+
+                        # Ajout d'informations HPC si disponibles
+                        if execution_ready:
+                            header += " 🚀 [PRÊT HPC]"
+
+                        if function_name:
+                            header += f"\n**Fonction:** `{function_name}()`"
+
+                        if required_modules:
+                            header += f"\n**Modules requis:** {', '.join(required_modules)}"
+
+                        parts.append(header)
+
+                        # Contexte si disponible
+                        if context:
+                            parts.append(f"\n**Contexte:** {context}")
+
+                        # Code
+                        parts.append(f"\n```{language}\n{code}\n```")
+
+                    except Exception as e:
+                        parts.append(f"\n### Exemple {i}\n[Erreur d'affichage du code: {e}]")
+
+            # Détails techniques
+            if hasattr(structured, 'technical_details') and structured.technical_details:
+                parts.append(f"\n## 🔧 Détails Techniques\n{structured.technical_details}")
+
+            # Recommandations
+            if hasattr(structured, 'recommendations') and structured.recommendations:
+                parts.append("\n## 🎯 Recommandations")
+                for reco in structured.recommendations:
+                    try:
+                        title = getattr(reco, 'title', 'Recommandation')
+                        description = getattr(reco, 'description', '')
+                        priority = getattr(reco, 'priority', 'medium')
+                        rationale = getattr(reco, 'rationale', None)
+
+                        priority_emoji = {"high": "🚨", "medium": "⚠️", "low": "💡"}.get(priority, "⚠️")
+
+                        parts.append(f"\n### {priority_emoji} {title}")
+                        parts.append(description)
+
+                        if rationale:
+                            parts.append(f"\n*Justification: {rationale}*")
+
+                    except Exception as e:
+                        parts.append(f"\n### Recommandation\n[Erreur d'affichage: {e}]")
+
+            # Conclusion
+            if hasattr(structured, 'conclusion') and structured.conclusion:
+                parts.append(f"\n## 🎯 Conclusion\n{structured.conclusion}")
+
+            # Entités liées
+            if hasattr(structured, 'related_entities') and structured.related_entities:
+                entities_list = ', '.join(structured.related_entities)
+                parts.append(f"\n## 🔗 Entités liées\n{entities_list}")
+
+            # Type de réponse
+            if hasattr(structured, 'answer_type') and structured.answer_type:
+                type_emojis = {
+                    "explanation": "📝",
+                    "tutorial": "🎓",
+                    "analysis": "🔍",
+                    "troubleshooting": "🔧",
+                    "reference": "📚",
+                    "hpc_function": "🚀"
+                }
+                emoji = type_emojis.get(structured.answer_type, "📝")
+                parts.append(f"\n---\n{emoji} *Type de réponse: {structured.answer_type}*")
+
+        except Exception as e:
+            # Fallback complet en cas d'erreur
+            parts = [f"[Erreur de formatage de la réponse structurée: {e}]"]
+
+            # Essayer au moins de récupérer le résumé
+            try:
+                if hasattr(structured, 'executive_summary'):
+                    parts.append(f"\nRésumé: {structured.executive_summary}")
+            except:
+                pass
+
+        return "\n".join(parts) if parts else "[Réponse structurée vide]"
+
+    def old_convert_structured_to_text(self, structured: AgentStructuredAnswerArgs) -> str:
+        """Convertit une réponse structurée en texte simple pour compatibilité."""
+        parts = [structured.executive_summary]
+
+        if structured.introduction:
+            parts.append(f"\n## Introduction\n{structured.introduction}")
+
+        for section in structured.markdown_sections:
+            title = "#" * section.level + " " + section.title
+            parts.append(f"\n{title}\n{section.content}")
+
+        for i, example in enumerate(structured.code_examples, 1):
+            parts.append(f"\n### Exemple {i}: {example.explanation}")
+            if example.context:
+                parts.append(example.context)
+            parts.append(f"\n```{example.language}\n{example.code}\n```")
+
+        if structured.technical_details:
+            parts.append(f"\n## Détails Techniques\n{structured.technical_details}")
+
+        if structured.recommendations:
+            parts.append("\n## Recommandations")
+            for reco in structured.recommendations:
+                priority_emoji = {"high": "🚨", "medium": "⚠️", "low": "💡"}[reco.priority]
+                parts.append(f"\n### {priority_emoji} {reco.title}")
+                parts.append(reco.description)
+                if reco.rationale:
+                    parts.append(f"*{reco.rationale}*")
+
+        if structured.conclusion:
+            parts.append(f"\n## Conclusion\n{structured.conclusion}")
+
+        return "\n".join(parts)
 
     def to_dict(self) -> Dict[str, Any]:
         """Convertit en dictionnaire pour sérialisation JSON."""
-        return {
+        result = {
             "answer": self.answer,
             "status": self.status,
             "query": self.query,
@@ -234,6 +551,12 @@ class AgentResponse:
             "error_details": self.error_details
         }
 
+        # ✅ AJOUTER la réponse structurée si elle existe
+        if self.structured_answer:
+            result["structured_answer"] = self.structured_answer.model_dump()
+
+        return result
+
     def to_json(self, indent: int = 2) -> str:
         """Convertit en JSON."""
         return json.dumps(self.to_dict(), indent=indent, ensure_ascii=False)
@@ -290,11 +613,6 @@ class AgentGetNotebookOverviewArgs(BaseModel):
     notebook_name: str = Field(..., description="The name of the notebook to analyze.")
 
 
-class AgentFinalAnswerArgs(BaseModel):
-    """Arguments for the final answer with automatic source citation."""
-    text: str = Field(...,
-                      description="The final answer content WITHOUT manual source citations. The system will automatically add source references.")
-
 
 class AgentSemanticSearchArgs(BaseModel):
     """Arguments pour la recherche sémantique."""
@@ -319,7 +637,7 @@ class AgentDecision(BaseModel):
         "get_relations",
         "get_notebook_overview",
         "ask_for_clarification",
-        "final_answer"
+        "structured_final_answer"
     ] = Field(...)
 
     arguments: Union[
@@ -330,7 +648,7 @@ class AgentDecision(BaseModel):
         AgentGetRelationsArgs,
         AgentGetNotebookOverviewArgs,
         AgentAskClarificationArgs,
-        AgentFinalAnswerArgs
+        AgentStructuredAnswerArgs
     ] = Field(...)
 
 
@@ -404,39 +722,88 @@ class CodeAnalysisAgent:
 """
 
         tool_descriptions = f"""
-<outils>
-    - `semantic_search`: **🔍 OUTIL DE RECHERCHE SÉMANTIQUE** - Recherche par similarité dans le contenu des notebooks. Idéal pour "comment faire X", "exemples de Y", "how can I", concepts techniques.
-    - `find_entity_by_name`: **OUTIL DE DÉMARRAGE RAPIDE.** Fonctionne avec {lang_description}.
-    - `list_entities`: **OUTIL DE DÉCOUVERTE STRUCTURELLE.** Recherche par attributs structurels (type, nom exact, parent).
-    - `get_entity_report`: **OUTIL D'INSPECTION DÉTAILLÉE.** Rapport complet d'une entité.
-    - `get_relations`: **OUTIL D'ENQUÊTE.** Relations/références d'une entité.
-"""
+        <outils>
+            - `semantic_search`: **🔍 OUTIL OBLIGATOIRE DE DÉMARRAGE** - DOIT ÊTRE LE PREMIER OUTIL UTILISÉ pour toute nouvelle requête. Recherche par similarité dans le contenu des notebooks. Idéal pour "comment faire X", "exemples de Y", "how can I", concepts techniques.
+            - `find_entity_by_name`: **OUTIL DE DÉMARRAGE RAPIDE.** Fonctionne avec {lang_description}.
+            - `list_entities`: **OUTIL DE DÉCOUVERTE STRUCTURELLE.** Recherche par attributs structurels (type, nom exact, parent).
+            - `get_entity_report`: **OUTIL D'INSPECTION DÉTAILLÉE.** Rapport complet d'une entité.
+            - `get_relations`: **OUTIL D'ENQUÊTE.** Relations/références d'une entité.
+        """
 
         if self.jupyter_explorer:
             tool_descriptions += """
-    - `get_notebook_overview`: **OUTIL SPÉCIALISÉ JUPYTER.** Vue d'ensemble d'un notebook complet.
-"""
+            - `get_notebook_overview`: **OUTIL SPÉCIALISÉ JUPYTER.** Vue d'ensemble d'un notebook complet.
+        """
 
         tool_descriptions += """
-    - `ask_for_clarification`: **OUTIL DE DIALOGUE.** Pour clarifier les requêtes ambiguës.
-    - `final_answer`: **OUTIL DE CONCLUSION.** Le système ajoutera automatiquement les citations des sources consultées.
+            - `ask_for_clarification`: **OUTIL DE DIALOGUE.** Pour clarifier les requêtes ambiguës.
+            - `structured_final_answer`: **OUTIL DE CONCLUSION STRUCTURÉE.** Génère une réponse finale structurée avec sections markdown, exemples de code COMPLETS (fonctions auto-suffisantes avec imports), et recommandations. IMPORTANT : Pour le code Python, toujours fournir des fonctions complètes prêtes à l'exécution sur systèmes de calcul haute performance.
+        
+        **RÈGLES ABSOLUES DE CHOIX D'OUTIL :**
 
-**STRATÉGIE DE CHOIX D'OUTIL :**
-- IMPORTANT: Toujours démarrer par une recherche sémantique
-- Pour "comment faire X", "exemples de Y", questions conceptuelles → `semantic_search`
-- Pour "quelle est l'entité X", recherche par nom → `find_entity_by_name`
-- Pour "lister les entités de type Y" → `list_entities`
-- Pour analyser une entité précise → `get_entity_report`
-</outils>
+        🚨 **RÈGLE #1 : DÉMARRAGE OBLIGATOIRE**
+        - Le PREMIER outil d'une nouvelle session DOIT TOUJOURS être `semantic_search`
+        - Ceci permet de comprendre le contexte global avant d'analyser des entités spécifiques
+        - Même pour une recherche d'entité précise, commencer par `semantic_search` pour le contexte
 
-**INSTRUCTIONS POUR LA RÉPONSE FINALE :**
-- Concentre-toi sur le CONTENU de ta réponse dans `final_answer`
-- Ne cite PAS manuellement les sources dans le texte
-- Le système ajoutera automatiquement une section "Sources consultées" avec toutes les références
-- Structure ta réponse de manière claire et logique
-"""
+        🚨 **RÈGLE #2 : QUAND UTILISER SEMANTIC_SEARCH**
+        - Nouvelle requête utilisateur → `semantic_search` EN PREMIER
+        - Questions "comment", "pourquoi", "quels exemples" → `semantic_search`
+        - Concepts techniques ou méthodologiques → `semantic_search`
+        - Avant d'analyser une entité inconnue → `semantic_search` pour context
+
+        🚨 **RÈGLE #3 : SÉQUENCE RECOMMANDÉE**
+        1. `semantic_search` (OBLIGATOIRE au début)
+        2. Puis selon les résultats : `find_entity_by_name`, `list_entities`, etc.
+        3. `get_entity_report` pour les détails
+        4. `get_relations` pour les connexions
+        5. `final_answer`
+
+        **STRATÉGIE DE CHOIX D'OUTIL :**
+        - CRITIQUE: Si c'est le 1er tour d'une nouvelle requête → `semantic_search` OBLIGATOIRE
+        - Pour "comment faire X", "exemples de Y", questions conceptuelles → `semantic_search`
+        - Pour "quelle est l'entité X", recherche par nom → `find_entity_by_name` (APRÈS semantic_search)
+        - Pour "lister les entités de type Y" → `list_entities` (APRÈS semantic_search)
+        - Pour analyser une entité précise → `get_entity_report` (APRÈS avoir trouvé l'entité)
+        </outils>
+        """
 
         return f"{mission_and_process}\n\n{tool_descriptions}\n\nMaintenant, commence."
+
+    def _convert_structured_to_text(self, structured: AgentStructuredAnswerArgs) -> str:
+        """Convertit une réponse structurée en texte simple pour compatibilité."""
+        parts = [structured.executive_summary]
+
+        if structured.introduction:
+            parts.append(f"\n## Introduction\n{structured.introduction}")
+
+        for section in structured.markdown_sections:
+            title = "#" * section.level + " " + section.title
+            parts.append(f"\n{title}\n{section.content}")
+
+        for i, example in enumerate(structured.code_examples, 1):
+            parts.append(f"\n### Exemple {i}: {example.explanation}")
+            if example.context:
+                parts.append(example.context)
+            parts.append(f"\n```{example.language}\n{example.code}\n```")
+
+        if structured.technical_details:
+            parts.append(f"\n## Détails Techniques\n{structured.technical_details}")
+
+        if structured.recommendations:
+            parts.append("\n## Recommandations")
+            for reco in structured.recommendations:
+                priority_emoji = {"high": "🚨", "medium": "⚠️", "low": "💡"}[reco.priority]
+                parts.append(f"\n### {priority_emoji} {reco.title}")
+                parts.append(reco.description)
+                if reco.rationale:
+                    parts.append(f"*{reco.rationale}*")
+
+        if structured.conclusion:
+            parts.append(f"\n## Conclusion\n{structured.conclusion}")
+
+        return "\n".join(parts)
+
 
     def _add_source_reference(self, entity_info: Dict[str, Any], source_type: str, tool_used: str) -> str:
         """Ajoute une référence de source et retourne son ID."""
@@ -637,7 +1004,7 @@ class CodeAnalysisAgent:
                         print(f"      {idx}. {candidate}")
 
                 print(f"   🛠️  Outil choisi: {decision.tool_name}")
-                print(f"   ⚙️  Arguments: {decision.arguments.model_dump(exclude_none=True)}")
+                #print(f"   ⚙️  Arguments: {decision.arguments.model_dump(exclude_none=True)}")
 
             except ValidationError as e:
                 response.status = "error"
@@ -660,6 +1027,32 @@ class CodeAnalysisAgent:
                 print(f"   Question: {decision.arguments.question}")
                 return response
 
+            if decision.tool_name == "structured_final_answer":
+                response.status = "success"
+                response.structured_answer = decision.arguments
+                response.answer = self._convert_structured_to_text(decision.arguments)  # Pour compatibilité
+                response.execution_time_total_ms = (time.time() - start_time) * 1000
+                response.steps_taken = i + 1
+
+                # Enrichir la réponse avec les informations collectées
+                response.sources_consulted = list(self.sources_used.values())
+                response._analyze_entities_and_findings()
+
+                print("✅ L'agent génère sa réponse finale structurée")
+                print(f"📚 Sources ajoutées: {len(response.sources_consulted)} références")
+                print(f"📋 Sections markdown: {len(decision.arguments.markdown_sections)}")
+                print(f"💻 Exemples de code: {len(decision.arguments.code_examples)}")
+                print(f"🎯 Recommandations: {len(decision.arguments.recommendations)}")
+
+                if use_memory:
+                    self.conversation_history = history.copy()
+
+                print("=" * 80)
+                print("✅ RÉPONSE STRUCTURÉE GÉNÉRÉE")
+                print("=" * 80)
+                return response
+
+            """
             if decision.tool_name == "final_answer":
                 response.status = "success"
                 response.answer = decision.arguments.text
@@ -680,7 +1073,7 @@ class CodeAnalysisAgent:
                 print("✅ RÉPONSE STRUCTURÉE GÉNÉRÉE")
                 print("=" * 80)
                 return response
-
+            """
             # Exécution de l'outil
             print(f"\n🔧 EXÉCUTION DE L'OUTIL: {decision.tool_name}")
             print("─" * 50)
