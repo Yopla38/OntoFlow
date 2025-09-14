@@ -22,7 +22,7 @@ elif os.path.exists("/home/yopla/Documents/keys/"):
 else:
     API_KEY_PATH = "~"
 
-OLLAMA_BASE_URL = "http://localhost:11434/v1"
+OLLAMA_BASE_URL = "https://api.openai.com/v1/"  # "http://localhost:11434/v1"
 
 # Pour Integration_fortran_RAG
 STORAGE_DIR = os.path.join(BASE_DIR, "Data_onto_RAG")  # Zone de stockage du RAG (chunks, hopfields network, ...)

@@ -47,6 +47,7 @@ try:
         CLIENT_OPENAI = openai.AsyncClient(base_url=OLLAMA_BASE_URL, api_key="ollama")
     else:
         CLIENT_OPENAI = openai.AsyncClient(api_key=api_key)
+        print('dir',dir(CLIENT_OPENAI),CLIENT_OPENAI.base_url)
 finally:
     # delete api_key from memory
     del api_key
