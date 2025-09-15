@@ -264,8 +264,8 @@ class JupyterNotebookParser:
                 cell_entity.dependencies = visitor.dependencies
                 cell_entity.called_functions = visitor.calls
             except SyntaxError as e:
-                self.logger.warning(
-                    f"Erreur de syntaxe dans la cellule {cell_number} de {filepath} (ligne {e.lineno}). Analyse AST de la cellule ignorée.")
+                self.logger.info(
+                    f"Not a python code : {cell_number} of {filepath} (line {e.lineno})")
 
         return entities, num_lines
 

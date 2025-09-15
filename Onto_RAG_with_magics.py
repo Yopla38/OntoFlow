@@ -13,6 +13,7 @@ from agent.Onto_wa_rag.CONSTANT import (
 )
 from agent.Onto_wa_rag.fortran_analysis.providers.consult import FortranEntityExplorer
 
+#from chat import Chat
 # --- Imports IPython Magic ---
 from IPython.core.magic import Magics, magics_class, line_cell_magic
 from IPython.display import display, Markdown
@@ -399,6 +400,104 @@ Example citation: "According to [Source 1], to create a molecule..."
     """
             display(Markdown(result_md))
 
+    async def _handle_execute(self):
+        """Récupère la dernière cellule commentaire, extrait le code avec le LLM et l'affiche."""
+        try:
+            # 1. Récupérer l'historique des cellules
+            history = list(self.shell.history_manager.get_range())
+
+            if not history:
+                display(Markdown("❌ **Aucune cellule dans l'historique**"))
+                return
+
+            # 2. Chercher la dernière cellule qui semble être un commentaire/texte
+            last_comment_cell = None
+            for session, line_num, cell_content in reversed(history):
+                # On cherche une cellule qui contient principalement du texte/commentaires
+                # ou qui commence par des commentaires
+                cell_content = cell_content.strip()
+                if cell_content and (
+                        cell_content.startswith('#') or
+                        cell_content.startswith('"""') or
+                        cell_content.startswith("'''") or
+                        len([line for line in cell_content.split('\n') if line.strip().startswith('#')]) > 2
+                ):
+                    last_comment_cell = cell_content
+                    break
+
+            if not last_comment_cell:
+                display(Markdown("""❌ **Aucune cellule commentaire trouvée**
+
+    Recherche effectuée pour :
+    - Cellules commençant par `#`
+    - Cellules commençant par `\"\"\"` ou `'''`
+    - Cellules avec plus de 2 lignes de commentaires
+                """))
+                return
+
+            # 3. Construire le prompt pour le LLM
+            system_prompt = """You are a code extraction expert. Your job is to extract executable Python code from comments and text descriptions.
+
+    RULES:
+    - Extract ONLY the Python code that can be executed
+    - Remove ALL comments, docstrings, and explanatory text
+    - Return ONLY the raw, executable Python code
+    - Do not add any explanations or markdown formatting
+    - If there's no executable code, return "# No executable code found"
+    - Preserve the logical structure and indentation of the code"""
+
+            user_prompt = f"""Extract the executable Python code from this text/comment:
+
+    ```
+    {last_comment_cell}
+    ```
+
+    Return ONLY the raw Python code without any comments or explanations:"""
+
+            messages = [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ]
+
+            # 4. Appeler le LLM
+            print("  🤖 Extraction du code avec le LLM...")
+            extracted_code = await self.rag.rag_engine.llm_provider.generate_response(
+                messages,
+                temperature=0.1  # Température basse pour plus de précision
+            )
+
+            # 5. Nettoyer la réponse (enlever les balises markdown si présentes)
+            extracted_code = extracted_code.strip()
+            if extracted_code.startswith('```python'):
+                extracted_code = extracted_code[9:]  # Enlever ```python
+            if extracted_code.startswith('```'):
+                extracted_code = extracted_code[3:]  # Enlever ```
+            if extracted_code.endswith('```'):
+                extracted_code = extracted_code[:-3]  # Enlever ``` final
+
+            extracted_code = extracted_code.strip()
+
+
+            # 6. Afficher le résultat
+            if extracted_code and extracted_code != "# No executable code found":
+                display(Markdown(f"""### 🚀 Start the HPC agent..."""))
+                # TODO regler le pb d'import (deplacer ce fichier un cran au dessus et utiliser venv de agent)
+                #chat = Chat(model="gpt-5")
+                message = f"""
+                Use the remote_run_code tool to run the following python function on 'robin-ubuntu':
+                function_source='{extracted_code}, with function_args={{}}'
+                """
+
+                #await chat.chat(message)
+                #chat.print_history()
+            else:
+                display(Markdown(f"""### ❌ No code found..."""))
+
+        except Exception as e:
+            print(f"❌ Erreur lors de l'extraction du code: {e}")
+            import traceback
+            traceback.print_exc()
+
     @line_cell_magic
     def rag(self, line, cell=None):
         """Magic command principale pour interagir avec OntoRAG."""
@@ -476,6 +575,10 @@ Example citation: "According to [Source 1], to create a molecule..."
 
                     elif command == '/help':
                         await show_available_commands()
+
+                    elif command == '/execute':
+                        print("🚀 Extraction et exécution de code de la dernière cellule commentaire...")
+                        await self._handle_execute()
 
                     else:
                         print(f"❌ Commande inconnue: '{command}'.")
