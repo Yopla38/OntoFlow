@@ -145,17 +145,17 @@ class AgentResponse:
             jupyter_entities = [e for e in self.entities_discovered if e.source_type == "jupyter"]
 
             if fortran_entities:
-                self.key_findings.append(f"Analysé {len(fortran_entities)} entité(s) Fortran")
+                self.key_findings.append(f"Analysed {len(fortran_entities)} Fortran entity(ies)")
             if jupyter_entities:
-                self.key_findings.append(f"Analysé {len(jupyter_entities)} entité(s) Jupyter")
+                self.key_findings.append(f"Analysed {len(jupyter_entities)} Jupyter entity(ies)")
 
         # Générer des questions de suivi
         self.suggested_followup_queries = []
         primary_entities = self.get_entities_by_role("primary")
         if primary_entities:
             for entity in primary_entities[:2]:  # Top 2
-                self.suggested_followup_queries.append(f"Analyse détaillée de {entity.name}")
-                self.suggested_followup_queries.append(f"Qui appelle {entity.name} ?")
+                self.suggested_followup_queries.append(f"Detailed analysis of {entity.name}")
+                self.suggested_followup_queries.append(f"Who call {entity.name} ?")
 
         # Calculer un niveau de confiance basique
         if self.status == "success" and self.sources_consulted:
@@ -168,7 +168,7 @@ class AgentResponse:
         output = [self.answer]
 
         if self.sources_consulted:
-            output.append("\n## 📚 Sources consultées :")
+            output.append("\n## 📚 Sources consulted:")
             for source in self.sources_consulted:
                 output.append(f"\n{source.get_citation()}")
 
@@ -250,7 +250,7 @@ class AgentResponse:
 
 class AgentAskClarificationArgs(BaseModel):
     """Arguments pour poser une question de clarification à l'utilisateur."""
-    question: str = Field(..., description="La question précise à poser à l'utilisateur.")
+    question: str = Field(..., description="The specific question to ask the user.")
 
 
 class AgentFindEntityByNameArgs(BaseModel):
@@ -306,11 +306,11 @@ class AgentSemanticSearchArgs(BaseModel):
 class AgentDecision(BaseModel):
     """Définit la pensée et l'action structurée de l'agent unifié."""
     thought: str = Field(...,
-                         description="Ma réflexion sur l'état actuel, ce que je viens d'apprendre, et ce que je dois faire.")
+                         description="My thoughts on the current situation, what I have just learnt, and what I need to do.")
     plan: Optional[List[str]] = Field(None,
-                                      description="[À DÉFINIR AU 1ER TOUR SEULEMENT] La liste des étapes pour répondre à la requête.")
+                                      description="[TO BE DEFINED IN THE FIRST ROUND ONLY] The list of steps to respond to the request.")
     working_memory_candidates: Optional[List[str]] = Field(None,
-                                                           description="La liste des noms d'entités qu'il reste à examiner.")
+                                                           description="The list of entity names that remain to be examined.")
     tool_name: Literal[
         "semantic_search",
         "find_entity_by_name",
@@ -346,7 +346,7 @@ class CodeAnalysisAgent:
         Initialise l'agent unifié avec système de citations.
         """
         if not fortran_explorer and not jupyter_explorer:
-            raise ValueError("Au moins un explorateur (Fortran ou Jupyter) doit être fourni.")
+            raise ValueError("At least one explorer (Fortran or Jupyter) must be provided.")
 
         self.llm = llm_provider
         self.fortran_explorer = fortran_explorer
@@ -373,15 +373,15 @@ class CodeAnalysisAgent:
 
         lang_description = " et ".join(available_languages)
 
-        mission_and_process = f"""Tu es un agent expert autonome, spécialisé dans l'analyse de code {lang_description}. Tu as accès à des tutorial notebook. Ton travail doit être systématique, rigoureux et complet.
+        mission_and_process = f"""You are an autonomous expert agent specialising in {lang_description} code analysis. You have access to tutorial notebooks. Your work must be systematic, rigorous and comprehensive.
 
-**OBLIGATION CRITIQUE : TRAÇABILITÉ DES SOURCES**
-- Chaque information que tu utilises provient d'outils qui analysent des fichiers spécifiques
-- Tu DOIS traquer les sources de tes informations pour pouvoir les citer
-- Dans ta réponse finale, tu citeras automatiquement toutes les sources consultées
-- Ne jamais inventer ou supposer des informations non vérifiées par tes outils
+**CRITICAL REQUIREMENT: SOURCE TRACEABILITY**
+- All information you use comes from tools that analyse specific files.
+- You MUST track the sources of your information so that you can cite them.
+- In your final answer, you will automatically cite all sources consulted.
+- Never invent or assume information that has not been verified by your tools.
 
-**TYPES D'ENTITÉS GÉRÉS :**
+**TYPES OF ENTITIES MANAGED:**
 """
 
         if self.fortran_explorer:
@@ -395,48 +395,47 @@ class CodeAnalysisAgent:
 """
 
         mission_and_process += """
-**PROCESSUS DE RAISONNEMENT OBLIGATOIRE :**
+**MANDATORY REASONING PROCESS:**
 
-1. **Rigueur et Exhaustivité :** Fournir des réponses COMPLÈTES et DOCUMENTÉES.
-2. **Workflow de Mémoire de Travail :** Pour les recherches exhaustives.
-3. **Robustesse :** Utiliser `ask_for_clarification` pour les requêtes ambiguës.
-4. **Traçabilité :** Chaque affirmation doit être basée sur des données obtenues via tes outils.
+1. **Rigour and Completeness:** Provide COMPLETE and DOCUMENTED answers.
+2. **Working Memory Workflow:** For exhaustive searches.
+3. **Robustness:** Use `ask_for_clarification` for ambiguous queries.
+4. **Traceability:** Each statement must be based on data obtained through your tools.
 """
 
         tool_descriptions = f"""
-<outils>
-    - `semantic_search`: **🔍 OUTIL DE RECHERCHE SÉMANTIQUE** - Recherche par similarité dans le contenu des notebooks. Idéal pour "comment faire X", "exemples de Y", "how can I", concepts techniques.
-    - `find_entity_by_name`: **OUTIL DE DÉMARRAGE RAPIDE.** Fonctionne avec {lang_description}.
-    - `list_entities`: **OUTIL DE DÉCOUVERTE STRUCTURELLE.** Recherche par attributs structurels (type, nom exact, parent).
-    - `get_entity_report`: **OUTIL D'INSPECTION DÉTAILLÉE.** Rapport complet d'une entité.
-    - `get_relations`: **OUTIL D'ENQUÊTE.** Relations/références d'une entité.
+<tools>
+    - `semantic_search`: **🔍 SEMANTIC SEARCH TOOL** - Searches for similarities in notebook content. Ideal for ‘how to do X’, ‘examples of Y’, ‘how can I’, technical concepts.
+    - `find_entity_by_name`: **QUICK START TOOL.** Works with {lang_description}.
+- `list_entities`: **STRUCTURAL DISCOVERY TOOL.** Search by structural attributes (type, exact name, parent).
+    - `get_entity_report`: **DETAILED INSPECTION TOOL.** Complete report on an entity.
+- `get_relations`: **INVESTIGATION TOOL.** Relationships/references of an entity.
 """
 
         if self.jupyter_explorer:
             tool_descriptions += """
-    - `get_notebook_overview`: **OUTIL SPÉCIALISÉ JUPYTER.** Vue d'ensemble d'un notebook complet.
-"""
+    - `get_notebook_overview`: **JUPYTER SPECIALISED TOOL.** Overview of a complete notebook."""
 
         tool_descriptions += """
-    - `ask_for_clarification`: **OUTIL DE DIALOGUE.** Pour clarifier les requêtes ambiguës.
-    - `final_answer`: **OUTIL DE CONCLUSION.** Le système ajoutera automatiquement les citations des sources consultées.
+    - `ask_for_clarification`: **DIALOGUE TOOL.** To clarify ambiguous queries.
+- `final_answer`: **CONCLUSION TOOL.** The system will automatically add citations from the sources consulted.
 
-**STRATÉGIE DE CHOIX D'OUTIL :**
-- IMPORTANT: Toujours démarrer par une recherche sémantique
-- Pour "comment faire X", "exemples de Y", questions conceptuelles → `semantic_search`
-- Pour "quelle est l'entité X", recherche par nom → `find_entity_by_name`
-- Pour "lister les entités de type Y" → `list_entities`
-- Pour analyser une entité précise → `get_entity_report`
-</outils>
+**TOOL SELECTION STRATEGY:**
+- IMPORTANT: Always start with a semantic search
+- For ‘how to do X’, ‘examples of Y’, conceptual questions → `semantic_search`
+- For ‘what is entity X’, search by name → `find_entity_by_name`
+- For ‘list entities of type Y’ → `list_entities`
+- To analyse a specific entity → `get_entity_report`
+</tools>
 
-**INSTRUCTIONS POUR LA RÉPONSE FINALE :**
-- Concentre-toi sur le CONTENU de ta réponse dans `final_answer`
-- Ne cite PAS manuellement les sources dans le texte
-- Le système ajoutera automatiquement une section "Sources consultées" avec toutes les références
-- Structure ta réponse de manière claire et logique
+**INSTRUCTIONS FOR THE FINAL ANSWER:**
+- Focus on the CONTENT of your answer in `final_answer`
+- Do NOT manually cite sources in the text
+- The system will automatically add a ‘Sources consulted’ section with all references
+- Structure your answer in a clear and logical manner
 """
 
-        return f"{mission_and_process}\n\n{tool_descriptions}\n\nMaintenant, commence."
+        return f"{mission_and_process}\n\n{tool_descriptions}\n\nNow, begin."
 
     def _add_source_reference(self, entity_info: Dict[str, Any], source_type: str, tool_used: str) -> str:
         """Ajoute une référence de source et retourne son ID."""
@@ -549,8 +548,8 @@ class CodeAnalysisAgent:
         session_id = str(uuid.uuid4())[:8]
 
         print("=" * 80)
-        print(f"🚀 DÉMARRAGE DE L'AGENT UNIFIÉ - Session {session_id}")
-        print(f"📝 Requête: {user_query}")
+        print(f"🚀 AGENT STARTUP - Session {session_id}")
+        print(f"📝 Request: {user_query}")
         print("=" * 80)
 
         # Initialisation de la réponse structurée
@@ -576,19 +575,19 @@ class CodeAnalysisAgent:
         if not use_memory:
             self.sources_used = {}
             self.reference_counter = 0
-            print("🔄 Sources réinitialisées (nouvelle session)")
+            print("🔄 Sources reset (new session)")
         else:
-            print(f"🧠 Session continue - Sources déjà trackées: {len(self.sources_used)}")
+            print(f"🧠 Ongoing session - Sources already tracked: {len(self.sources_used)}")
 
         # Gestion de la mémoire
         if use_memory and self.conversation_history:
             self.conversation_history.append({"role": "user", "content": user_query})
             history = self.conversation_history.copy()
-            print(f"📚 Mémoire persistante: {len(history)} messages dans l'historique")
+            print(f"📚 Persistent memory: {len(history)} messages in history")
         else:
             history = [{"role": "user", "content": user_query}]
             self.conversation_history = history.copy()
-            print("🆕 Nouvelle session démarrée")
+            print("🆕 New session started")
 
         for i in range(self.max_steps):
             step_start = time.time()
@@ -599,8 +598,8 @@ class CodeAnalysisAgent:
 
             messages_for_llm = [{"role": "system", "content": self.system_prompt}] + history
 
-            print("🤖 Envoi de la requête au LLM...")
-            print(f"📊 Contexte: {len(messages_for_llm)} messages")
+            print("🤖 Sending the request to the LLM...")
+            print(f"📊 Context: {len(messages_for_llm)} messages")
 
             decision_dict = await self.llm.generate_response(
                 messages=messages_for_llm,
@@ -609,7 +608,7 @@ class CodeAnalysisAgent:
 
             if not decision_dict:
                 response.status = "error"
-                response.error_details = "Le LLM n'a pas retourné de décision."
+                response.error_details = "The LLM did not return a decision."
                 response.execution_time_total_ms = (time.time() - start_time) * 1000
                 response.steps_taken = i
                 print(f"❌ {response.error_details}")
@@ -619,11 +618,11 @@ class CodeAnalysisAgent:
                 decision = AgentDecision.model_validate(decision_dict)
 
                 # 🔍 ENREGISTRER L'ÉTAPE DE RAISONNEMENT
-                print(f"🧠 RÉFLEXION DE L'AGENT:")
-                print(f"   💭 Pensée: {decision.thought}")
+                print(f"🧠 AGENT'S REFLECTION:")
+                print(f"   💭 Thought: {decision.thought}")
 
                 if decision.plan:
-                    print(f"   📋 Plan défini:")
+                    print(f"   📋 Defined plan:")
                     for idx, step in enumerate(decision.plan, 1):
                         print(f"      {idx}. {step}")
 
@@ -632,16 +631,16 @@ class CodeAnalysisAgent:
                         response.final_plan_executed = decision.plan.copy()
 
                 if decision.working_memory_candidates:
-                    print(f"   🎯 Mémoire de travail: {len(decision.working_memory_candidates)} candidats")
+                    print(f"   🎯 Working memory: {len(decision.working_memory_candidates)} candidates")
                     for idx, candidate in enumerate(decision.working_memory_candidates, 1):
                         print(f"      {idx}. {candidate}")
 
-                print(f"   🛠️  Outil choisi: {decision.tool_name}")
+                print(f"   🛠️  Selected tool: {decision.tool_name}")
                 print(f"   ⚙️  Arguments: {decision.arguments.model_dump(exclude_none=True)}")
 
             except ValidationError as e:
                 response.status = "error"
-                response.error_details = f"Erreur de validation: {e}"
+                response.error_details = f"Validation error: {e}"
                 response.execution_time_total_ms = (time.time() - start_time) * 1000
                 response.steps_taken = i
                 print(f"❌ {response.error_details}")
@@ -656,7 +655,7 @@ class CodeAnalysisAgent:
                 response.execution_time_total_ms = (time.time() - start_time) * 1000
                 response.steps_taken = i + 1
 
-                print("❓ L'agent demande une clarification")
+                print("❓ The agent requests clarification.")
                 print(f"   Question: {decision.arguments.question}")
                 return response
 
@@ -670,19 +669,19 @@ class CodeAnalysisAgent:
                 response.sources_consulted = list(self.sources_used.values())
                 response._analyze_entities_and_findings()
 
-                print("✅ L'agent génère sa réponse finale")
-                print(f"📚 Sources ajoutées: {len(response.sources_consulted)} références")
+                print("✅ The agent generates its final response.")
+                print(f"📚 Sources added: {len(response.sources_consulted)} references")
 
                 if use_memory:
                     self.conversation_history = history.copy()
 
                 print("=" * 80)
-                print("✅ RÉPONSE STRUCTURÉE GÉNÉRÉE")
+                print("✅ GENERATED STRUCTURED RESPONSE")
                 print("=" * 80)
                 return response
 
             # Exécution de l'outil
-            print(f"\n🔧 EXÉCUTION DE L'OUTIL: {decision.tool_name}")
+            print(f"\n🔧 TOOL EXECUTION: {decision.tool_name}")
             print("─" * 50)
 
             sources_before = len(self.sources_used)
@@ -700,7 +699,7 @@ class CodeAnalysisAgent:
                 new_sources_count = sources_after - sources_before
                 recent_sources = list(self.sources_used.values())[-new_sources_count:]
                 new_sources = [s.reference_id for s in recent_sources]
-                print(f"📝 Nouvelles sources trackées: {new_sources_count}")
+                print(f"📝 New sources tracked: {new_sources_count}")
                 for source in recent_sources:
                     print(f"   ➕ {source.get_citation()}")
 
@@ -723,17 +722,17 @@ class CodeAnalysisAgent:
             response.tools_used[decision.tool_name] = response.tools_used.get(decision.tool_name, 0) + 1
 
             formatted_result = self._format_tool_result_for_llm(tool_result)
-            print(f"📤 Résultat formaté pour le LLM ({len(formatted_result)} caractères)")
+            print(f"📤 Formatted result for LLM ({len(formatted_result)} characters)")
 
             history.append({"role": "user", "content": formatted_result})
 
-            print(f"📊 État actuel:")
-            print(f"   💬 Messages dans l'historique: {len(history)}")
-            print(f"   📚 Sources trackées: {len(self.sources_used)}")
+            print(f"📊 Current status:")
+            print(f"   💬 Messages in history: {len(history)}")
+            print(f"   📚 Sources tracked: {len(self.sources_used)}")
 
         # Timeout
         response.status = "timeout"
-        response.answer = "Je n'ai pas pu aboutir à une réponse finale dans le nombre d'étapes imparti."
+        response.answer = "I was unable to reach a final answer within the allotted number of steps."
         response.execution_time_total_ms = (time.time() - start_time) * 1000
         response.steps_taken = self.max_steps
         response.sources_consulted = list(self.sources_used.values())
@@ -743,30 +742,30 @@ class CodeAnalysisAgent:
             self.conversation_history = history.copy()
 
         print("⏰ TIMEOUT ATTEINT")
-        print(f"📚 Sources consultées malgré le timeout: {len(response.sources_consulted)}")
+        print(f"📚 Sources consulted despite timeout: {len(response.sources_consulted)}")
 
         return response
 
     def _create_tool_result_summary(self, tool_result: Any) -> str:
         """Crée un résumé textuel du résultat d'un outil."""
         if isinstance(tool_result, list):
-            return f"Liste de {len(tool_result)} élément(s)"
+            return f"List of {len(tool_result)} items"
         elif isinstance(tool_result, dict):
             if tool_result.get('error'):
-                return f"Erreur: {tool_result['error']}"
+                return f"Error: {tool_result['error']}"
             elif 'entity_name' in tool_result:
-                return f"Rapport pour {tool_result['entity_name']}"
+                return f"Report for {tool_result['entity_name']}"
             else:
-                return f"Dictionnaire avec {len(tool_result)} clé(s)"
+                return f"Dictionary with {len(tool_result)} key(s)"
         else:
             summary = str(tool_result)[:100]
-            return f"Résultat textuel: {summary}{'...' if len(str(tool_result)) > 100 else ''}"
+            return f"Text result: {summary}{'...' if len(str(tool_result)) > 100 else ''}"
 
     async def _execute_tool_detailed(self, tool_name: str, args: BaseModel) -> Any:
         """Exécute l'outil avec logs détaillés."""
         args_dict = args.model_dump(exclude_none=True)
 
-        print(f"🎯 Outil: {tool_name}")
+        print(f"🎯 Tool: {tool_name}")
         print(f"📋 Arguments: {args_dict}")
 
         try:
@@ -775,11 +774,11 @@ class CodeAnalysisAgent:
 
             if tool_name == "get_notebook_overview":
                 if not self.jupyter_explorer:
-                    error = "Erreur: Aucun explorateur Jupyter disponible."
+                    error = "Error: No Jupyter explorer available."
                     print(f"❌ {error}")
                     return error
 
-                print("📓 Exécution sur explorateur Jupyter...")
+                print("📓 Running on Jupyter Explorer...")
                 result = await self.jupyter_explorer.get_notebook_overview(**args_dict)
 
                 # Analyser le résultat
@@ -787,9 +786,9 @@ class CodeAnalysisAgent:
                     if result.get('error'):
                         print(f"❌ Erreur: {result['error']}")
                     else:
-                        print(f"✅ Vue d'ensemble générée pour: {result.get('notebook_name', 'N/A')}")
+                        print(f"✅ Overview generated for: {result.get('notebook_name', 'N/A')}")
                         stats = result.get('statistics', {})
-                        print(f"   📊 Statistiques: {stats}")
+                        print(f"   📊 Statistics: {stats}")
                         self._add_source_reference(result, "jupyter", "get_notebook_overview")
 
                 return result
@@ -798,22 +797,22 @@ class CodeAnalysisAgent:
             entity_name = args_dict.get('entity_name')
             entity_type = args_dict.get('entity_type')
 
-            print(f"🔍 Détermination de l'explorateur...")
-            print(f"   🎯 Entité cible: {entity_name or 'N/A'}")
+            print(f"🔍 Determination of the explorer...")
+            print(f"   🎯 Target entity: {entity_name or 'N/A'}")
             print(f"   📝 Type: {entity_type or 'N/A'}")
 
             explorer_type = self._determine_explorer_type(entity_name, entity_type)
-            print(f"   🤖 Explorateur choisi: {explorer_type}")
+            print(f"   🤖 Selected explorer: {explorer_type}")
 
             if explorer_type == "jupyter" and self.jupyter_explorer:
-                print("📓 Exécution sur explorateur Jupyter...")
+                print("📓 Running on Jupyter Explorer...")
                 result = await self._execute_tool_on_explorer_detailed(tool_name, args_dict, self.jupyter_explorer,
                                                                        "jupyter")
                 self._track_sources_from_result(result, "jupyter", tool_name)
                 return result
 
             elif explorer_type == "fortran" and self.fortran_explorer:
-                print("🔧 Exécution sur explorateur Fortran...")
+                print("🔧 Execution on Fortran Explorer...")
                 result = await self._execute_tool_on_explorer_detailed(tool_name, args_dict, self.fortran_explorer,
                                                                        "fortran")
                 self._track_sources_from_result(result, "fortran", tool_name)
@@ -821,74 +820,74 @@ class CodeAnalysisAgent:
 
             else:
                 # Essayer les deux si disponibles
-                print("🔄 Tentative sur les deux explorateurs...")
+                print("🔄 Attempt on the two explorers...")
                 results = []
 
                 if self.fortran_explorer:
                     try:
-                        print("   🔧 Test sur Fortran...")
+                        print("   🔧 Test for Fortran...")
                         result = await self._execute_tool_on_explorer_detailed(tool_name, args_dict,
                                                                                self.fortran_explorer, "fortran")
-                        if result and result != "Entité non trouvée":
-                            print(f"   ✅ Résultat Fortran obtenu")
+                        if result and result != "Entity not found":
+                            print(f"   ✅ Fortran result obtained")
                             self._track_sources_from_result(result, "fortran", tool_name)
                             results.append({"type": "fortran", "result": result})
                         else:
-                            print(f"   ❌ Aucun résultat Fortran")
+                            print(f"   ❌ No Fortran results")
                     except Exception as e:
-                        print(f"   ❌ Erreur Fortran: {e}")
+                        print(f"   ❌ Error Fortran: {e}")
 
                 if self.jupyter_explorer:
                     try:
-                        print("   📓 Test sur Jupyter...")
+                        print("   📓 Test on Jupyter...")
                         result = await self._execute_tool_on_explorer_detailed(tool_name, args_dict,
                                                                                self.jupyter_explorer, "jupyter")
-                        if result and result != "Entité non trouvée":
-                            print(f"   ✅ Résultat Jupyter obtenu")
+                        if result and result != "Entity not found":
+                            print(f"   ✅ Jupyter result obtained")
                             self._track_sources_from_result(result, "jupyter", tool_name)
                             results.append({"type": "jupyter", "result": result})
                         else:
-                            print(f"   ❌ Aucun résultat Jupyter")
+                            print(f"   ❌ No Jupyter results")
                     except Exception as e:
-                        print(f"   ❌ Erreur Jupyter: {e}")
+                        print(f"   ❌ Error Jupyter: {e}")
 
                 if results:
-                    print(f"📋 Résultats combinés: {len(results)} types de résultats")
+                    print(f"📋 Combined results: {len(results)} types of results")
                     return results
                 else:
-                    no_result = "Aucune entité trouvée dans les deux types de code."
+                    no_result = "No entities found in either type of code."
                     print(f"❌ {no_result}")
                     return no_result
 
         except Exception as e:
-            error_msg = f"Erreur lors de l'exécution de l'outil: {e}"
-            logger.error(f"Erreur lors de l'exécution de l'outil '{tool_name}': {e}", exc_info=True)
+            error_msg = f"Error while running the tool: {e}"
+            logger.error(f"Error while running the tool '{tool_name}': {e}", exc_info=True)
             print(f"❌ {error_msg}")
             return error_msg
 
     async def _execute_semantic_search(self, query: str, max_results: int = 5, min_confidence: float = 0.3) -> Dict[
         str, Any]:
         """Exécute une recherche sémantique dans les notebooks."""
-        print(f"🔍 Recherche sémantique pour: '{query}'")
-        print(f"   📊 Paramètres: max_results={max_results}, min_confidence={min_confidence}")
+        print(f"🔍 Semantic search for: '{query}'")
+        print(f"   📊 Parameters: max_results={max_results}, min_confidence={min_confidence}")
 
         if len(self.semantic_retriever.chunks) == 0:
-            error_msg = "Index sémantique vide. Aucun notebook indexé."
+            error_msg = "Semantic index empty. No notebooks indexed."
             print(f"   ❌ {error_msg}")
             return {"error": error_msg}
 
         results = self.semantic_retriever.query(query, k=max_results)
 
         if not results:
-            print(f"   ❌ Aucun résultat au-dessus du seuil de confiance {min_confidence}")
+            print(f"   ❌ No results above the confidence threshold {min_confidence}")
             return {
                 "query": query,
                 "results": [],
                 "total_indexed_chunks": len(self.semantic_retriever.chunks),
-                "message": f"Aucun contenu pertinent trouvé (seuil: {min_confidence})"
+                "message": f"No relevant content found (threshold: {min_confidence})"
             }
 
-        print(f"   ✅ {len(results)} résultats trouvés")
+        print(f"   ✅ {len(results)} results found")
         for i, result in enumerate(results, 1):
             score = result["similarity_score"]
             source = result["source_filename"]
@@ -934,14 +933,14 @@ class CodeAnalysisAgent:
                 result = await explorer.find_entity_by_name(**args_dict)
 
                 if isinstance(result, dict) and result.get('entity_name'):
-                    print(f"   ✅ Entité trouvée: {result['entity_name']} ({result.get('entity_type', 'N/A')})")
+                    print(f"   ✅ Entity found: {result['entity_name']} ({result.get('entity_type', 'N/A')})")
                 else:
-                    print(f"   ❌ Entité non trouvée")
+                    print(f"   ❌ Entity not found")
 
                 return result
 
             elif tool_name == "list_entities":
-                print(f"   📋 Recherche d'entités par critères...")
+                print(f"   📋 Search for entities by criteria...")
                 for key, value in args_dict.items():
                     if value:
                         print(f"      {key}: {value}")
@@ -949,7 +948,7 @@ class CodeAnalysisAgent:
                 result = await explorer.find_entities_by_criteria(**args_dict)
 
                 if isinstance(result, list):
-                    print(f"   📊 {len(result)} entité(s) trouvée(s)")
+                    print(f"   📊 {len(result)} entity/entities found")
                     for i, item in enumerate(result[:5]):  # Afficher les 5 premières
                         # ✅ CORRECTION : Gérer correctement les objets UnifiedEntity
                         if isinstance(item, dict) and 'entity' in item:
@@ -968,32 +967,32 @@ class CodeAnalysisAgent:
                             print(f"      {i + 1}. {entity_name} ({entity_type}) - score: {score:.1f}")
                         else:
                             # Format inattendu
-                            print(f"      {i + 1}. Format inattendu: {type(item)}")
+                            print(f"      {i + 1}. Unexpected format: {type(item)}")
 
                     if len(result) > 5:
                         print(f"      ... et {len(result) - 5} autres")
                 else:
-                    print(f"   ❌ Résultat inattendu: {type(result)}")
+                    print(f"   ❌ Unexpected format: {type(result)}")
 
                 return result
 
             elif tool_name == "get_entity_report":
                 entity_name = args_dict['entity_name']
                 include_source = args_dict.get('include_source_code', False)
-                print(f"   📄 Génération du rapport pour: {entity_name}")
-                print(f"   📝 Code source inclus: {include_source}")
+                print(f"   📄 Report generation for: {entity_name}")
+                print(f"   📝 Source code included: {include_source}")
 
                 result = await explorer.get_full_report(**args_dict)
 
                 if isinstance(result, dict):
                     if result.get('error'):
-                        print(f"   ❌ Erreur: {result['error']}")
+                        print(f"   ❌ Error: {result['error']}")
                     else:
-                        print(f"   ✅ Rapport généré pour: {result.get('entity_name', 'N/A')}")
+                        print(f"   ✅ Report generated for: {result.get('entity_name', 'N/A')}")
                         summary = result.get('summary', {})
                         print(f"      Type: {summary.get('type', 'N/A')}")
-                        print(f"      Fichier: {summary.get('filepath', 'N/A')}")
-                        print(f"      Lignes: {summary.get('start_line', 'N/A')}-{summary.get('end_line', 'N/A')}")
+                        print(f"      File: {summary.get('filepath', 'N/A')}")
+                        print(f"      Lines: {summary.get('start_line', 'N/A')}-{summary.get('end_line', 'N/A')}")
 
                         # Informations sur les relations
                         outgoing = result.get('outgoing_relations', {})
@@ -1002,22 +1001,22 @@ class CodeAnalysisAgent:
                         if explorer_type == "fortran":
                             calls = outgoing.get('called_functions_or_subroutines', [])
                             deps = outgoing.get('module_dependencies (USE)', [])
-                            print(f"      Appelle: {len(calls)} fonctions/subroutines")
-                            print(f"      Utilise: {len(deps)} modules")
+                            print(f"      Calls: {len(calls)} functions/subroutines")
+                            print(f"      Use: {len(deps)} modules")
                         else:  # jupyter
                             imports = outgoing.get('imports', [])
                             calls = outgoing.get('function_calls', [])
                             print(f"      Imports: {len(imports)}")
-                            print(f"      Appels: {len(calls)} fonctions")
+                            print(f"      Calls: {len(calls)} functions")
 
-                        print(f"      Référencé par: {len(incoming)} entité(s)")
+                        print(f"      Referenced by: {len(incoming)} entity(ies)")
 
                 return result
 
             elif tool_name == "get_relations":
                 entity_name = args_dict["entity_name"]
                 relation_type = args_dict["relation_type"]
-                print(f"   🔗 Analyse des relations '{relation_type}' pour: {entity_name}")
+                print(f"   🔗 Analysis of “{relation_type}” relationships for: {entity_name}")
 
                 if relation_type in ["callers", "references"]:
                     if explorer_type == "jupyter":
@@ -1028,7 +1027,7 @@ class CodeAnalysisAgent:
                 elif relation_type in ["callees", "imports"]:
                     entity = await explorer.em.find_entity(entity_name)
                     if not entity:
-                        error = f"Entité '{entity_name}' non trouvée."
+                        error = f"Entity '{entity_name}' not found."
                         print(f"   ❌ {error}")
                         return error
 
@@ -1039,33 +1038,33 @@ class CodeAnalysisAgent:
 
                 # Analyser le résultat
                 if isinstance(result, list):
-                    print(f"   📊 {len(result)} relation(s) trouvée(s)")
+                    print(f"   📊 {len(result)} relationship(s) found")
                     for i, item in enumerate(result[:3]):  # Afficher les 3 premières
                         if isinstance(item, dict):
                             name = item.get('name', 'N/A')
                             item_type = item.get('type', 'N/A')
                             print(f"      {i + 1}. {name} ({item_type})")
                     if len(result) > 3:
-                        print(f"      ... et {len(result) - 3} autres")
+                        print(f"      ... and other {len(result) - 3}")
                 elif isinstance(result, dict):
-                    print(f"   📊 Relations structurées trouvées")
+                    print(f"   📊 Structured relations found")
                     for key, value in result.items():
                         if isinstance(value, list):
-                            print(f"      {key}: {len(value)} élément(s)")
+                            print(f"      {key}: {len(value)} item(s)")
                         else:
                             print(f"      {key}: {value}")
 
                 return result
 
             else:
-                error = f"Erreur : Outil inconnu '{tool_name}'."
+                error = f"Error: Unknown tool '{tool_name}'."
                 print(f"   ❌ {error}")
                 return error
 
         except Exception as e:
-            error_msg = f"Erreur dans l'explorateur {explorer_type}: {e}"
+            error_msg = f"Error in Explorer {explorer_type}: {e}"
             print(f"   ❌ {error_msg}")
-            logger.error(f"Erreur {explorer_type} pour '{tool_name}': {e}", exc_info=True)
+            logger.error(f"Error {explorer_type} for '{tool_name}': {e}", exc_info=True)
             return error_msg
 
     def _track_sources_from_result(self, result: Any, source_type: str, tool_name: str):
@@ -1084,7 +1083,7 @@ class CodeAnalysisAgent:
             elif hasattr(result, 'entity_name'):  # ✅ NOUVEAU : Objet UnifiedEntity direct
                 self._add_source_reference(result, source_type, tool_name)
         except Exception as e:
-            logger.debug(f"Erreur tracking sources: {e}")
+            logger.debug(f"Error tracking sources: {e}")
 
     def _format_tool_result_for_llm(self, result: Any) -> str:
         """Formate le résultat d'un outil pour le LLM."""
@@ -1097,7 +1096,7 @@ class CodeAnalysisAgent:
             for part in result:
                 part_type = part['type']
                 part_result = part['result']
-                formatted_parts.append(f"=== Résultats {part_type.upper()} ===")
+                formatted_parts.append(f"=== Answers {part_type.upper()} ===")
                 formatted_parts.append(self._format_single_result(part_result))
             return "\n".join(formatted_parts)
 
@@ -1120,18 +1119,18 @@ class CodeAnalysisAgent:
         try:
             json_str = json.dumps(processed_result, indent=2)
             if len(json_str) > 8000:
-                return f"Tool Result (tronqué): {json_str[:8000]}..."
+                return f"Tool Result (truncated): {json_str[:8000]}..."
             return f"Tool Result: {json_str}"
         except TypeError as e:
-            logger.error(f"Erreur de sérialisation: {e}")
+            logger.error(f"Serialisation error: {e}")
             return f"Tool Result: {str(result)}"
 
     def _generate_sources_section(self) -> str:
         """Génère la section des sources consultées."""
         if not self.sources_used:
-            return "\n\n**Aucune source spécifique consultée.**"
+            return "\n\n**No specific sources consulted.**"
 
-        sources_section = "\n\n## 📚 Sources consultées :\n"
+        sources_section = "\n\n## 📚 Sources consulted :\n"
 
         for ref_id, source_ref in self.sources_used.items():
             sources_section += f"\n{source_ref.get_citation()}"
@@ -1143,16 +1142,16 @@ class CodeAnalysisAgent:
         self.conversation_history = []
         self.sources_used = {}
         self.reference_counter = 0
-        print("🧠 Mémoire de l'agent et sources effacées.")
+        print("🧠 Agent memory and deleted sources.")
 
     def get_memory_summary(self) -> str:
         """Retourne un résumé de la mémoire avec info sur les sources."""
         if not self.conversation_history:
-            return "Aucune mémoire conservée."
+            return "No memory retained."
 
         user_messages = [msg["content"] for msg in self.conversation_history if msg["role"] == "user"]
         sources_info = f", {len(self.sources_used)} sources trackées" if self.sources_used else ""
-        return f"Mémoire : {len(self.conversation_history)} messages{sources_info}, dernières requêtes : {user_messages[-3:]}"
+        return f"Memory: {len(self.conversation_history)} messages{sources_info}, latest requests: {user_messages[-3:]}"
 
     def get_sources_used(self) -> List[SourceReference]:
         """Retourne la liste des sources utilisées dans la session courante."""
