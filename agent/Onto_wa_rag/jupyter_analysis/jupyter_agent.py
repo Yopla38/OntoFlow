@@ -613,7 +613,6 @@ class AgentGetNotebookOverviewArgs(BaseModel):
     notebook_name: str = Field(..., description="The name of the notebook to analyze.")
 
 
-
 class AgentSemanticSearchArgs(BaseModel):
     """Arguments pour la recherche sémantique."""
     query: str = Field(..., description="The search query to find relevant content semantically.")
