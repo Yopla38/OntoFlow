@@ -133,6 +133,15 @@ class DocumentStore:
         await self._save_metadata()
         return document_id
 
+    def get_document_count(self) -> int:
+        """Retourne le nombre total de documents indexés."""
+        return len(self.documents)
+
+    def get_total_chunks_count(self) -> int:
+        """Retourne le nombre total de chunks pour tous les documents en utilisant les métadonnées."""
+        # C'est très efficace car cela ne charge pas les chunks, juste les métadonnées déjà en mémoire.
+        return sum(doc.get('chunks_count', 0) for doc in self.documents.values())
+
     def _load_metadata(self) -> None:
         """Charge les métadonnées des documents depuis le fichier et vérifie leur cohérence"""
         if os.path.exists(self.metadata_path):

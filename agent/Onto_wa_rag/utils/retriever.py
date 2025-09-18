@@ -10,9 +10,13 @@
 
 # retriever.py
 import asyncio
+import logging
+
 import numpy as np
 from typing import List, Dict, Any, Optional, Tuple
 from scipy.spatial.distance import cosine
+
+logger = logging.getLogger(__name__)
 
 
 class Retriever:
@@ -201,8 +205,86 @@ class Retriever:
 
         return passages
 
-
     async def retrieve(
+            self,
+            query: str,
+            document_id: Optional[str] = None,
+            top_k: int = 5,
+            skip_loading: bool = False
+    ) -> List[Dict[str, Any]]:
+        """
+        Récupère les passages les plus pertinents pour une requête,
+        formatés pour l'envoi direct au LLM (_generate_rag_response).
+        """
+        # Générer l'embedding de la requête
+        query_embedding = (await self.embedding_manager.provider.generate_embeddings([query]))[0]
+
+        passages_with_scores = []
+
+        async def process_chunks(doc_id: str, doc_chunks: List[Dict[str, Any]]):
+            for chunk in doc_chunks:
+                logging.debug(f"[DOC {doc_id}] Chunk keys: {list(chunk.keys())}")
+
+                chunk_id = chunk["id"]
+                embedding = self.embedding_manager.get_embedding(chunk_id)
+
+                if not embedding:
+                    continue
+
+                similarity = 1 - cosine(query_embedding, embedding)
+
+                # Récupération des infos
+                metadata = chunk.get("metadata", {})
+                start_pos = (
+                        chunk.get("start_pos") or chunk.get("start_line") or
+                        metadata.get("start_pos") or metadata.get("start_line")
+                )
+                end_pos = (
+                        chunk.get("end_pos") or chunk.get("end_line") or
+                        metadata.get("end_pos") or metadata.get("end_line")
+                )
+
+                passages_with_scores.append({
+                    "document_id": doc_id,
+                    "chunk_id": chunk_id,
+                    "content": chunk.get("text", ""),  # ⬅️ utilisé dans _generate_rag_response
+                    "similarity_score": similarity,  # ⬅️ renommage
+                    "start_pos": start_pos,
+                    "end_pos": end_pos,
+                    "metadata": metadata
+                })
+
+        # Cas 1 : recherche dans un document spécifique
+        if document_id:
+            if not skip_loading:
+                await self.document_store.load_document_chunks(document_id)
+            doc_chunks = await self.document_store.get_document_chunks(document_id) or []
+            await process_chunks(document_id, doc_chunks)
+        else:
+            # Cas 2 : recherche dans tous les documents
+            all_documents = await self.document_store.get_all_documents()
+            for doc_id in all_documents:
+                if not skip_loading:
+                    await self.document_store.load_document_chunks(doc_id)
+                doc_chunks = await self.document_store.get_document_chunks(doc_id) or []
+                await process_chunks(doc_id, doc_chunks)
+
+        # Trier par similarité
+        passages_with_scores.sort(key=lambda x: x["similarity_score"], reverse=True)
+        top_passages = passages_with_scores[:top_k]
+
+        # Ajouter infos doc (pour le mapping avec _generate_rag_response)
+        for passage in top_passages:
+            doc_info = await self.document_store.get_document(passage["document_id"]) or {}
+            metadata = passage.get("metadata", {})
+
+            passage["source_filename"] = doc_info.get("original_filename") or metadata.get("filename", "Unknown")
+            passage["source_file"] = doc_info.get("path") or metadata.get("filepath", "")
+            passage["tokens"] = metadata.get("estimated_tokens", "?")
+
+        return top_passages
+
+    async def old_retrieve(
             self,
             query: str,
             document_id: Optional[str] = None,
@@ -221,6 +303,7 @@ class Retriever:
         Returns:
             Liste des passages les plus pertinents avec leur score
         """
+
         # Générer l'embedding de la requête
         query_embedding = (await self.embedding_manager.provider.generate_embeddings([query]))[0]
 
@@ -265,6 +348,11 @@ class Retriever:
                     continue
 
                 for chunk in doc_chunks:
+                    logging.debug(f"[DOC {document_id}] Chunk keys: {list(chunk.keys())}")  # 🔍 Debug des clés
+                    if "metadata" in chunk:
+                        logging.debug(f"[DOC {doc_id}] Metadata keys: {list(chunk['metadata'].keys())}")
+                        logging.debug(f"[DOC {doc_id}] Metadata content: {chunk['metadata']}")
+
                     chunk_id = chunk["id"]
                     embedding = self.embedding_manager.get_embedding(chunk_id)
 
@@ -276,8 +364,8 @@ class Retriever:
                             "chunk_id": chunk_id,
                             "text": chunk["text"],
                             "similarity": similarity,
-                            "start_pos": chunk["start_pos"],
-                            "end_pos": chunk["end_pos"],
+                            "start_pos": chunk['metadata']["start_line"],
+                            "end_pos": chunk['metadata']["end_line"],
                             "metadata": chunk.get("metadata", {})
                         })
                         

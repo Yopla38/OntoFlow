@@ -23,7 +23,6 @@ from ..fortran_analysis.core.entity_manager import UnifiedEntity
 from ..fortran_analysis.providers.consult import FortranEntityExplorer
 from .entity_explorer_jupyter import JupyterEntityExplorer
 from ..provider.llm_providers import LLMProvider
-from ..retriever_adapter import SimpleRetriever
 
 logger = logging.getLogger(__name__)
 
@@ -457,40 +456,6 @@ class AgentResponse:
 
         return "\n".join(parts) if parts else "[Réponse structurée vide]"
 
-    def old_convert_structured_to_text(self, structured: AgentStructuredAnswerArgs) -> str:
-        """Convertit une réponse structurée en texte simple pour compatibilité."""
-        parts = [structured.executive_summary]
-
-        if structured.introduction:
-            parts.append(f"\n## Introduction\n{structured.introduction}")
-
-        for section in structured.markdown_sections:
-            title = "#" * section.level + " " + section.title
-            parts.append(f"\n{title}\n{section.content}")
-
-        for i, example in enumerate(structured.code_examples, 1):
-            parts.append(f"\n### Exemple {i}: {example.explanation}")
-            if example.context:
-                parts.append(example.context)
-            parts.append(f"\n```{example.language}\n{example.code}\n```")
-
-        if structured.technical_details:
-            parts.append(f"\n## Détails Techniques\n{structured.technical_details}")
-
-        if structured.recommendations:
-            parts.append("\n## Recommandations")
-            for reco in structured.recommendations:
-                priority_emoji = {"high": "🚨", "medium": "⚠️", "low": "💡"}[reco.priority]
-                parts.append(f"\n### {priority_emoji} {reco.title}")
-                parts.append(reco.description)
-                if reco.rationale:
-                    parts.append(f"*{reco.rationale}*")
-
-        if structured.conclusion:
-            parts.append(f"\n## Conclusion\n{structured.conclusion}")
-
-        return "\n".join(parts)
-
     def to_dict(self) -> Dict[str, Any]:
         """Convertit en dictionnaire pour sérialisation JSON."""
         result = {
@@ -658,6 +623,7 @@ class CodeAnalysisAgent:
                  llm_provider: LLMProvider,
                  fortran_explorer: Optional[FortranEntityExplorer] = None,
                  jupyter_explorer: Optional[JupyterEntityExplorer] = None,
+                 rag = None,
                  max_steps: int = 7):
         """
         Initialise l'agent unifié avec système de citations.
@@ -674,10 +640,12 @@ class CodeAnalysisAgent:
         # Historique persistant
         self.conversation_history: List[Dict[str, str]] = []
 
-        # ✅ NOUVEAU : Système de tracking des sources
+        # Système de tracking des sources
         self.sources_used: Dict[str, SourceReference] = {}
         self.reference_counter = 0
-        self.semantic_retriever = SimpleRetriever()
+        if rag:
+            self.rag = rag
+            self.semantic_retriever = rag.retriever
 
     def build_unified_system_prompt(self) -> str:
         """Construit le prompt système pour l'agent unifié avec emphasis sur les citations."""
@@ -1264,19 +1232,14 @@ class CodeAnalysisAgent:
         print(f"🔍 Recherche sémantique pour: '{query}'")
         print(f"   📊 Paramètres: max_results={max_results}, min_confidence={min_confidence}")
 
-        if len(self.semantic_retriever.chunks) == 0:
-            error_msg = "Index sémantique vide. Aucun notebook indexé."
-            print(f"   ❌ {error_msg}")
-            return {"error": error_msg}
-
-        results = self.semantic_retriever.query(query, k=max_results)
+        results = await self.rag.search(query, top_k=max_results)
 
         if not results:
             print(f"   ❌ Aucun résultat au-dessus du seuil de confiance {min_confidence}")
             return {
                 "query": query,
                 "results": [],
-                "total_indexed_chunks": len(self.semantic_retriever.chunks),
+                "total_indexed_chunks": "",
                 "message": f"Aucun contenu pertinent trouvé (seuil: {min_confidence})"
             }
 
@@ -1309,7 +1272,7 @@ class CodeAnalysisAgent:
         return {
             "query": query,
             "results": results,
-            "total_indexed_chunks": len(self.semantic_retriever.chunks),
+            "total_indexed_chunks": "",
             "sources_tracked": sources_created
         }
 

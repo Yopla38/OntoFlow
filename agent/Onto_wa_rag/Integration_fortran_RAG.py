@@ -401,7 +401,8 @@ class OntoRAG:
                                                 jupyter_explorer=JupyterEntityExplorer(
                                                     self.custom_processor.jupyter_processor.entity_manager,
                                                     self.ontology_manager
-                                                )
+                                                ),
+                                                rag=self.rag_engine
                                             )
 
         print("✅ OntoRAG initialisé avec succès!")
