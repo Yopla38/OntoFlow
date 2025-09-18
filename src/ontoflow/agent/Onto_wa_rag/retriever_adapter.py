@@ -19,12 +19,12 @@ sys.path.insert(0, str(repo_root))
 
 
 # === Imports now work ===
-from OntoFlow.agent.Onto_wa_rag.jupyter_analysis.jupyter_notebook_parser import (
+from ontoflow.agent.Onto_wa_rag.jupyter_analysis.jupyter_notebook_parser import (
     get_jupyter_analyzer,
     chunk_notebook_entities,
 )
 
-from OntoFlow.agent.Onto_wa_rag.fortran_analysis.core.entity_manager import UnifiedEntity
+from ontoflow.agent.Onto_wa_rag.fortran_analysis.core.entity_manager import UnifiedEntity
 
 
 class SimpleRetriever:
