@@ -1,0 +1,69 @@
+[project]
+name = "ontoflow"
+version = "0.0.1"
+description = "ontoflow"
+readme = "README.md"
+requires-python = ">=3.11,<4.0"
+dependencies = [
+  "PyMuPDF",
+  "PyWavelets",
+  "SpeechRecognition",
+  "aiosqlite",
+  "beautifulsoup4",
+  "escodegen",
+  "esprima",
+  "fastapi",
+  "flask-socketio",
+  "fparser",
+  "fprettify",
+  "graphviz",
+  "instructor",
+  "jsonpatch",
+  "mammoth",
+  "markdownify",
+  "markupsafe",
+  "matplotlib",
+  "motor",
+  "nest-asyncio",
+  "networkx",
+  "numpy",
+  "open-fortran-parser",
+  "pandas",
+  "pdfminer-six",
+  "pexpect",
+  "pinecone",
+  "puremagic",
+  "pydantic",
+  "pydub",
+  "python-pptx",
+  "pyvis",
+  "rapidfuzz",
+  "rdflib",
+  "requests",
+  "scikit-learn",
+  "scipy",
+  "sounddevice",
+  "soundfile",
+  "spacy",
+  "tenacity",
+  "tqdm",
+  "tree-sitter",
+  "uvicorn",
+  "youtube-transcript-api",
+  # AI & Transformers
+  "anthropic",
+  "openai",
+  "pykeen",
+  "langchain",
+  "sentence-transformers",
+  "transformers",
+  "torch"
+]
+
+[tool.poetry.dependencies]
+torch = { version = "*", source = "pytorch_cpu" }
+
+[[tool.poetry.source]]
+name = "pytorch_cpu"
+url = "https://download.pytorch.org/whl/cpu"
+priority = "explicit"
