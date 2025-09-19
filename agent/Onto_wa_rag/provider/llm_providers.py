@@ -33,6 +33,7 @@ from transformers import AutoTokenizer, AutoModel
 
 from ..CONSTANT import API_KEY_PATH, EMBEDDING_MODEL, LOCAL_EMBEDDING_PATH, LANGUAGE, OLLAMA_BASE_URL
 from ..provider.get_key import get_openai_key
+from ..json_coerce.wrapper import StructuredWrapper
 
 #  Installation pour le provider local :
 # https: // forums.developer.nvidia.com / t / installing - cuda - on - ubuntu - 22 - 04 - rxt4080 - laptop / 292899
@@ -230,13 +231,14 @@ class OpenAIProvider(LLMProvider):
 
             # Si un modèle Pydantic est fourni
             if pydantic_model:
-                response = await self.client.beta.chat.completions.parse(
-                    messages=formatted_messages,
+                response = StructuredWrapper.json_coerced_chat_oneshot(
+                    client=self.client,
+                    structure=pydantic_model,
                     model=self.model,
-                    response_format=pydantic_model,
+                    prompt=formatted_messages
                 )
 
-                return response.choices[0].message.parsed.model_dump()
+                return pydantic_model.model_validate(response)
 
             # Cas standard
             response = await self.client.chat.completions.create(**params)
