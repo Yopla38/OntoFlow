@@ -42,10 +42,12 @@ from ..json_coerce.wrapper import StructuredWrapper
 # attempt to collect openai API key
 api_key = get_openai_key(api_key_path=API_KEY_PATH)
 
+LOCAL_LLM = False
 try:
     # if no key is found, assume local deployment
     if api_key == "":
         CLIENT_OPENAI = openai.AsyncClient(base_url=OLLAMA_BASE_URL, api_key="ollama")
+        LOCAL_LLM = True
     else:
         CLIENT_OPENAI = openai.AsyncClient(api_key=api_key)
 finally:
@@ -230,7 +232,17 @@ class OpenAIProvider(LLMProvider):
                 return await self.client.chat.completions.create(**params)
 
             # Si un modèle Pydantic est fourni
-            if pydantic_model:
+            if pydantic_model and not LOCAL_LLM:
+                response = await self.client.beta.chat.completions.parse(
+                    messages=formatted_messages,
+                    model=self.model,
+                    response_format=pydantic_model,
+                )
+
+                return response.choices[0].message.parsed.model_dump()
+
+            if pydantic_model and LOCAL_LLM:
+                # If running locally, use the json_coerced_chat_oneshot method
                 response = StructuredWrapper.json_coerced_chat_oneshot(
                     client=self.client,
                     structure=pydantic_model,
