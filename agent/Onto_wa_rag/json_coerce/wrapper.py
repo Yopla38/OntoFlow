@@ -12,8 +12,8 @@ import json
 from openai import OpenAI
 from pydantic import BaseModel, ValidationError
 
-from json_coerce.json_parser import clean_output
-from json_coerce.model_convert import convert_model_to_struct
+from ..json_coerce.json_parser import clean_output
+from ..json_coerce.model_convert import convert_model_to_struct
 
 
 JSON_RETRY_PROMPT = """You provided the following JSON:
