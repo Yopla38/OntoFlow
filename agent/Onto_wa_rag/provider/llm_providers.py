@@ -46,7 +46,7 @@ LOCAL_LLM = False
 try:
     # if no key is found, assume local deployment
     if api_key == "":
-        CLIENT_OPENAI = openai.AsyncClient(base_url=OLLAMA_BASE_URL, api_key="ollama")
+        CLIENT_OPENAI = openai.OpenAI(base_url=OLLAMA_BASE_URL, api_key="ollama")
         LOCAL_LLM = True
     else:
         CLIENT_OPENAI = openai.AsyncClient(api_key=api_key)
