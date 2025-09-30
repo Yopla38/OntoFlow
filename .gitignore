@@ -1,5 +1,31 @@
-__pycache__
-.idea
-.venv
-venvs
-venv
+.idea/
+.vscode/
+
+
+*__pycache__*
+/.pytest_cache/
+*.ipynb_checkpoints/
+*.pyc
+*.code-workspace
+
+## build objects
+*.egg-info*
+/build/
+/dist/
+
+# coverage artefacts
+/.coverage*
+/coverage.xml
+*log.yaml
+*.lcov
+
+# data
+*.pkl
+GPT_log.json
+
+# testing mess
+*.inp
+*.out
+*.manifest
+*.log
+/dataset-*.yaml
