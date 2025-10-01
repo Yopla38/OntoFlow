@@ -15,6 +15,7 @@ import gc
 import io
 import json
 import logging
+import os
 import re
 import subprocess
 from concurrent.futures import ThreadPoolExecutor
@@ -115,6 +116,10 @@ class LLMProvider(ABC):
         self.history = ConversationHistory()
         self.log_file = 'GPT_log.json'
 
+        # wipe logfile
+        if self.log_file and os.path.exists(self.log_file):
+            os.remove(self.log_file)
+
     @abstractmethod
     async def generate_response(self, prompt: Union[str, List[Dict[str, str]]], **kwargs) -> str:
         pass
@@ -123,12 +128,22 @@ class LLMProvider(ABC):
     async def generate_response_for_humain(self, messages: List[Dict[str, str]], stream=None) -> Dict[str, Any]:
         pass
 
-    def write_log(self, receive_text=None):
+    def write_log(self, params: dict | None = None, append: bool = True):
+        if params is None:
+            params = {}
+        
+        params["Timestamp"] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
         if self.log_file:
-            timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            log = f"Timestamp : {timestamp}\n{receive_text}"
-            with open(self.log_file, 'w') as f:
-                f.write(log)
+            data = []
+            if append and os.path.exists(self.log_file):
+                with open(self.log_file, "r") as f:
+                    data = [json.load(f)]
+
+            data.append(params)
+
+            with open(self.log_file, 'w+') as f:
+                json.dump(data, indent=2, fp=f)
 
     @abstractmethod
     async def generate_embeddings(self, texts: List[str]) -> List[List[float]]:
