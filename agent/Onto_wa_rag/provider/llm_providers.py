@@ -47,7 +47,7 @@ LOCAL_LLM = False
 try:
     # if no key is found, assume local deployment
     if api_key == "":
-        CLIENT_OPENAI = openai.OpenAI(base_url=OLLAMA_BASE_URL, api_key="ollama")
+        CLIENT_OPENAI = openai.AsyncClient(base_url=OLLAMA_BASE_URL, api_key="ollama")
         LOCAL_LLM = True
     else:
         CLIENT_OPENAI = openai.AsyncClient(api_key=api_key)
@@ -258,7 +258,7 @@ class OpenAIProvider(LLMProvider):
 
             if pydantic_model and LOCAL_LLM:
                 # If running locally, use the json_coerced_chat_oneshot method
-                response = StructuredWrapper.json_coerced_chat_oneshot(
+                response = await StructuredWrapper.json_coerced_chat_oneshot(
                     client=self.client,
                     structure=pydantic_model,
                     model=self.model,

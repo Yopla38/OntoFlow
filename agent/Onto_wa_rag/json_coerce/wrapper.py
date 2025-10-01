@@ -48,7 +48,7 @@ class StructuredWrapper:
         self.history = []
 
     @classmethod
-    def json_coerced_chat_oneshot(
+    async def json_coerced_chat_oneshot(
         cls,
         client: OpenAI,
         structure: BaseModel.__class__,
@@ -57,9 +57,10 @@ class StructuredWrapper:
         max_retries: int = 3,
     ) -> dict[str, str]:
         wrapper = cls(client=client, structure=structure)
-        return wrapper.chat(prompt=prompt, model=model, max_retries=max_retries)
+        result = await wrapper.chat(prompt=prompt, model=model, max_retries=max_retries)
+        return result
 
-    def _chat(self, model: str, prompt: str | None = None) -> str:
+    async def _chat(self, model: str, prompt: str | None = None) -> str:
         """
         Act on the current message history, appending the response to the history.
         """
@@ -71,7 +72,7 @@ class StructuredWrapper:
         if len(self.history) > 0 and self.history[-1]["role"] != "user":
             raise ValueError("Last message in history must be from user")
 
-        completion = self.client.chat.completions.create(
+        completion = await self.client.chat.completions.create(
             model=model,
             messages=self.history,
         )
@@ -89,7 +90,7 @@ class StructuredWrapper:
 
         return completion.choices[0].message.content
 
-    def chat(
+    async def chat(
         self, prompt: str | list[dict[str, str]], model: str, max_retries: int = 3
     ) -> dict[str, str]:
         if isinstance(prompt, str):
@@ -109,25 +110,25 @@ Do not respond with any other content, only the JSON object with the following f
 {self.structure}"""
 
         # get a response
-        result = self._chat(model=model, prompt=modified_prompt)
+        result = await self._chat(model=model, prompt=modified_prompt)
         if result == "":
             return {}
 
-        parsed = self._validate_output(result, current_retries, max_retries, model)
+        parsed = await self._validate_output(result, current_retries, max_retries, model)
 
         return json.loads(parsed)
 
-    def _validate_output(
+    async def _validate_output(
         self, output: str, current_retries: int, max_retries: int, retry_model: str
     ) -> str:
-        output = self._get_json(output, current_retries, max_retries, retry_model)
-        output = self._validate_structure(
+        output = await self._get_json(output, current_retries, max_retries, retry_model)
+        output = await self._validate_structure(
             output, current_retries, max_retries, retry_model
         )
 
         return output
 
-    def _get_json(
+    async def _get_json(
         self, text: str, current_retries: int, max_retries: int, retry_model: str
     ) -> str:
         """
@@ -145,16 +146,16 @@ Do not respond with any other content, only the JSON object with the following f
             print(
                 f"Failed to parse JSON, asking {retry_model} to retry... (attempt {current_retries + 1}/{max_retries}, {len(self.history)} messages in history)"
             )
-            retry = self._chat(
+            retry = await self._chat(
                 model=retry_model,
                 prompt=JSON_RETRY_PROMPT.format(input=text, error=str(e)),
             )
 
-            return self._validate_output(
+            return await self._validate_output(
                 retry, current_retries + 1, max_retries, retry_model
             )
 
-    def _validate_structure(
+    async def _validate_structure(
         self,
         data: str,
         current_retries: int,
@@ -173,7 +174,7 @@ Do not respond with any other content, only the JSON object with the following f
             print(
                 f"Structure validation failed, asking {retry_model} to fix the issue... (attempt {current_retries + 1}/{max_retries}, {len(self.history)} messages in history)"
             )
-            retry = self._chat(
+            retry = await self._chat(
                 model=retry_model,
                 prompt=VALIDATION_RETRY_PROMPT.format(
                     output=data,
@@ -182,7 +183,7 @@ Do not respond with any other content, only the JSON object with the following f
                 ),
             )
 
-            return self._validate_output(
+            return await self._validate_output(
                 retry, current_retries + 1, max_retries, retry_model
             )
 
