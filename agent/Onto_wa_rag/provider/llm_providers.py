@@ -250,7 +250,7 @@ class OpenAIProvider(LLMProvider):
                     prompt=formatted_messages
                 )
 
-                return pydantic_model.model_validate(response)
+                return pydantic_model.model_validate(response).model_dump()
 
             # Cas standard
             response = await self.client.chat.completions.create(**params)
