@@ -132,7 +132,7 @@ class LLMProvider(ABC):
         if params is None:
             params = {}
         
-        params["Timestamp"] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        params["timestamp"] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
         if self.log_file:
             data = []
