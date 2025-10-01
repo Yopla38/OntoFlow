@@ -28,6 +28,8 @@ def convert_model_to_struct(model: BaseModel.__class__) -> str:
         if not field.is_required():
             comment.append("(Optional)")
         comment += field.metadata
+        if hasattr(field, "description") and field.description is not None:
+            comment.append(field.description)
         if len(comment) > 1:
             output.append(" ".join(comment))
 
