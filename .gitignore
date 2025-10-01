@@ -21,7 +21,9 @@
 
 # data
 *.pkl
-GPT_log.json
+*log.json
+*log.ipynb
+*log.yaml
 
 # testing mess
 *.inp
