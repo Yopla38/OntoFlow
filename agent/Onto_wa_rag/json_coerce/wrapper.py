@@ -24,7 +24,7 @@ This cannot be parsed as valid JSON for the reason:
 
 Please correct the JSON so that it can be parsed correctly.
 
-Return only the output of this operation, do not add your own commentry, explanation or formatting.
+Return only the output of this operation, do not add your own commentary, explanation or formatting.
 """
 
 VALIDATION_RETRY_PROMPT = """You provided the following structured output:
