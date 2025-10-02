@@ -1,4 +1,5 @@
 import json
+from typing import List, Optional
 import pytest
 
 from pydantic import BaseModel, Field
@@ -39,3 +40,12 @@ def test_field_model() -> None:
     structure = convert_model_to_struct(FieldModel)
 
     assert "My thoughts on the current situation." in structure
+
+
+def test_optional_list():
+    class ModelWithNone(BaseModel):
+        optional_list: Optional[List[str]] = Field(None, description="None as default")
+
+    structure = convert_model_to_struct(ModelWithNone)
+
+    assert "None as default" in structure
