@@ -25,7 +25,7 @@ else:
 LOCAL_MODEL = False
 full_api_key_path = os.path.join(os.path.expanduser(API_KEY_PATH), "openAI_key.txt")
 if not os.path.exists(full_api_key_path):
-    print("### API key not found, attempting local execuition ###")
+    print("### API key not found, attempting local execution ###")
     LOCAL_MODEL = True
 else:
     print("### Located API key file ###")
