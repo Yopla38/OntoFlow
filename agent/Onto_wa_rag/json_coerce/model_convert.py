@@ -52,7 +52,7 @@ def recursive_convert(model: BaseModel.__class__) -> dict[str, Any]:
         
         # if we hit another nested model, immediately recurse
         if isinstance(annotation, type) and issubclass(annotation, BaseModel):
-            struct[field_name] = convert_model_to_struct(annotation)
+            struct[field_name] = recursive_convert(annotation)
 
         # a Union of objects needs to be expanded
         if get_origin(annotation) is Union:
