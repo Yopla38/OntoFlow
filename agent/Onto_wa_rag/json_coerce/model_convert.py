@@ -9,7 +9,7 @@ Description: Agent IA d'Intégration Continue
 """
 
 import json
-from typing import Any, Union, get_args, get_origin
+from typing import Any, Literal, Union, get_args, get_origin
 from pydantic import BaseModel
 from pydantic.fields import FieldInfo
 
@@ -63,24 +63,25 @@ def recursive_convert(model: BaseModel.__class__) -> dict[str, Any]:
         annotation = field.annotation
         
         # if we hit another nested model, immediately recurse
-        if isinstance(annotation, type):        
+        if isinstance(annotation, type):
+            print(f"\t\tannotation is type {type(annotation)}")
             if issubclass(annotation, BaseModel):
                 struct[field_name] = recursive_convert(annotation)
             else:
                 struct[field_name] = annotation.__name__
 
+        elif get_origin(annotation) is Literal:
+            struct[field_name] = f"Literal{get_args(annotation)}"
+
         # a Union of objects needs to be expanded
-        elif len(get_args(annotation)) > 0:
+        elif get_origin(annotation) is Union:
             tmp = []
             for item in get_args(annotation):
                 if item is None:
                     continue
 
-                if isinstance(item, type):
-                    if issubclass(item, BaseModel):
+                if isinstance(item, type) and issubclass(item, BaseModel):
                         tmp.append(recursive_convert(item))
-                    else:
-                        tmp.append(translate_type(item.__name__))
                 else:
                     tmp.append(str(item))
 
