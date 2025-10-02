@@ -8,7 +8,64 @@ Description: Agent IA d'Intégration Continue
 ------------------------------------------
 """
 
-from pydantic import BaseModel
+import json
+from typing import Any, Union, get_args, get_origin
+from pydantic import BaseModel, Field
+
+
+translate = {
+    "str": "string",
+    "int": "integer",
+    "float": "number",
+    "bool": "boolean",
+    "list": "array",
+    "dict": "object",
+}
+
+
+def field_to_string(field: Field) -> str:
+    """Converts a pydantic Field object to a string, preserving metadata and descriptions"""
+    typing = f"type={translate.get(field.annotation.__name__, field.annotation.__name__)}"
+
+    comment = ["//"]
+
+    if not field.is_required():
+        comment.append("(Optional)")
+
+    comment += field.metadata
+
+    if field.description is not None and field.description != "":
+        comment.append(field.description)
+
+    if len(comment) > 1:
+        return f"{typing}  {' '.join(comment)}"
+    return typing
+
+
+def recursive_convert(model: BaseModel.__class__) -> dict[str, Any]:
+
+    print(f"Model converting {model}, {type(model)}")
+
+    struct = {}
+    for field_name, field in model.model_fields.items():
+        annotation = field.annotation
+        
+        # if we hit another nested model, immediately recurse
+        if isinstance(annotation, type) and issubclass(annotation, BaseModel):
+            struct[field_name] = convert_model_to_struct(annotation)
+
+        # a Union of objects needs to be expanded
+        if get_origin(annotation) is Union:
+            tmp = []
+            for item in get_args(annotation):
+                tmp.append(recursive_convert(item))
+            struct[field_name] = tmp
+
+        # otherwise, just store the name
+        else:
+            struct[field_name] = field_to_string(field=field)
+
+    return struct
 
 
 def convert_model_to_struct(model: BaseModel.__class__) -> str:
@@ -21,27 +78,4 @@ def convert_model_to_struct(model: BaseModel.__class__) -> str:
     Returns:
         str: The generated prompt string.
     """
-    output = ["{"]
-    for i, (field_name, field) in enumerate(model.model_fields.items()):
-        # first, we convert any metadata into a "comment" for the LLM
-        comment = ["  //"]
-        if not field.is_required():
-            comment.append("(Optional)")
-        comment += field.metadata
-        if hasattr(field, "description") and field.description is not None:
-            comment.append(field.description)
-        if len(comment) > 1:
-            output.append(" ".join(comment))
-
-        if field.annotation is None:
-            raise ValueError(f"Field {field_name} has no type annotation")
-        # now, create the actual field
-        content = [f'  "{field_name}": "{field.annotation.__name__}"']
-        # add a comma for all but the last entry
-        if i < len(model.model_fields) - 1:
-            content.append(",")
-        # add this entry and continue
-        output.append("".join(content))
-
-    output.append("}")
-    return "\n".join(output)
+    return json.dumps(recursive_convert(model), indent=2)

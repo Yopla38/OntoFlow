@@ -20,29 +20,19 @@ class FieldModel(BaseModel):
     thought: str = Field(..., description="My thoughts on the current situation.")
 
 
-translate = {
-    "str": "string",
-    "int": "integer",
-    "float": "number",
-    "bool": "boolean",
-    "list": "array",
-    "dict": "object",
-}
-
-
 @pytest.mark.parametrize("model", [SimpleModel, LargeModel])
 def test_model_conversion(model: BaseModel.__class__) -> None:
     structure = convert_model_to_struct(model)
     assert structure.startswith("{")
     assert structure.endswith("}")
 
-    clean = "\n".join(line for line in structure.split("\n") if "//" not in line)
+    # clean = "\n".join(line for line in structure.split("\n") if "//" not in line)
 
-    as_dict = json.loads(clean)
+    as_dict = json.loads(structure)
 
     for name, field in model.model_json_schema().get("properties", {}).items():
         assert name in as_dict
-        assert translate[as_dict[name]] == field.get("type")
+        assert as_dict[name].split("type=")[-1] == field.get("type")
 
 
 def test_field_model() -> None:
