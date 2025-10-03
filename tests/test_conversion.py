@@ -1,51 +1,33 @@
-import json
-from typing import List, Optional
+import os
+import sys
+import inspect
 import pytest
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from ..agent.Onto_wa_rag.json_coerce.model_convert import convert_model_to_struct
 
-
-class SimpleModel(BaseModel):
-    name: str
-
-
-class LargeModel(BaseModel):
-    name: str
-    age: int
-    height: float
-    is_student: bool
-    hobbies: list[str]
-
-class FieldModel(BaseModel):    
-    thought: str = Field(..., description="My thoughts on the current situation.")
+if os.getcwd() not in sys.path:
+    sys.path.insert(0, os.getcwd())
+    
+from . import models
 
 
-@pytest.mark.parametrize("model", [SimpleModel, LargeModel])
+def all_pydantic_models(module) -> list[type[BaseModel]]:
+    """
+    Return a list of *classes* defined in ``module`` that inherit from
+    ``pydantic.BaseModel`` (excluding BaseModel itself).
+    """
+    return [
+        cls
+        for _, cls in inspect.getmembers(module, inspect.isclass)
+        if issubclass(cls, BaseModel) and cls is not BaseModel
+    ]
+
+
+@pytest.mark.parametrize("model", all_pydantic_models(models))
 def test_model_conversion(model: BaseModel.__class__) -> None:
-    structure = convert_model_to_struct(model)
-    assert structure.startswith("{")
-    assert structure.endswith("}")
+    print(f"Testing model: {model}")
+    if not hasattr(model, "decomp"):
+        raise ValueError(f"Model {model} is missing a decomp")
 
-    # clean = "\n".join(line for line in structure.split("\n") if "//" not in line)
-
-    as_dict = json.loads(structure)
-
-    for name, field in model.model_json_schema().get("properties", {}).items():
-        assert name in as_dict
-        assert as_dict[name].split("type=")[-1] == field.get("type")
-
-
-def test_field_model() -> None:
-    structure = convert_model_to_struct(FieldModel)
-
-    assert "My thoughts on the current situation." in structure
-
-
-def test_optional_list():
-    class ModelWithNone(BaseModel):
-        optional_list: Optional[List[str]] = Field(None, description="None as default")
-
-    structure = convert_model_to_struct(ModelWithNone)
-
-    assert "None as default" in structure
+    assert convert_model_to_struct(model) == model.decomp(model).strip()
