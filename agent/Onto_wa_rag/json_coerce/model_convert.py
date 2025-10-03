@@ -9,93 +9,72 @@ Description: Agent IA d'Intégration Continue
 """
 
 import json
-from typing import Any, Literal, Union, get_args, get_origin
+from typing import Any, List, Literal, Optional, Union, get_args, get_origin
 from pydantic import BaseModel
 from pydantic.fields import FieldInfo
 
 
-translate = {
-    "str": "string",
-    "int": "integer",
-    "float": "number",
-    "bool": "boolean",
-    "list": "array",
-    "dict": "object",
-}
+def recursive_convert(data: Any, defs: Optional[dict[Any, Any]] = None, indent: int = 0, no_wrap: bool = False) -> str:
 
-def translate_type(name: str) -> str:
-    if isinstance(name, type):
-        name = name.__name__
-    return translate.get(name, name)
-
-
-def field_to_string(field: FieldInfo) -> str:
-    """Converts a pydantic Field object to a string, preserving metadata and descriptions"""
-    print(f"\t\t\tCasting {field}, {type(field)} to str")
-
-    if hasattr(field, "annotation") and field.annotation is not None:
-        typing = f"type={translate_type(field.annotation.__name__)}"
-    else:
-        typing = str(field)
-
-    comment = ["//"]
-
-    if not field.is_required():
-        comment.append("(Optional)")
-
-    comment += field.metadata
-
-    if field.description is not None and field.description != "":
-        comment.append(field.description)
-
-    if len(comment) > 1:
-        return f"{typing}  {' '.join(comment)}"
-    return typing
-
-
-def recursive_convert(model: BaseModel.__class__) -> dict[str, Any]:
-
-    print(f"Model converting {model.__name__}, {model}")
-
-    struct = {}
-    for field_name, field in model.model_fields.items():
-        print(f"\tHandling field {field_name}")
-        annotation = field.annotation
-        
-        # if we hit another nested model, immediately recurse
-        if isinstance(annotation, type):
-            print(f"\t\tannotation is type {type(annotation)}")
-            if issubclass(annotation, BaseModel):
-                struct[field_name] = recursive_convert(annotation)
-            else:
-                struct[field_name] = annotation.__name__
-
-        elif get_origin(annotation) is Literal:
-            struct[field_name] = f"Literal{get_args(annotation)}"
-
-        # a Union of objects needs to be expanded
-        elif get_origin(annotation) is Union:
-            tmp = []
-            for item in get_args(annotation):
-                if item is None:
-                    continue
-
-                if isinstance(item, type) and issubclass(item, BaseModel):
-                        tmp.append(recursive_convert(item))
-                else:
-                    tmp.append(str(item))
-
-            struct[field_name] = tmp
-
-        elif isinstance(field, FieldInfo):
-            struct[field_name] = field_to_string(field)
-
-        # otherwise, just store the name
+    def apply_indent(string: str, extra: int = 0) -> str:
+        return "  " * (indent + extra) + string
+    
+    header = {"title": None, "description": None}
+    output = []
+    if isinstance(data, dict):
+        newdefs = data.pop("$defs", {})
+        if defs is None:
+            defs = newdefs
         else:
-            print("\t\tFallback cast annotation to string")
-            struct[field_name] = str(annotation)
+            defs.update(newdefs)
 
-    return struct
+        if "properties" in data:
+            data = data.get("properties", {})
+
+        for k, v in data.items():
+            if v is None:
+                continue
+
+            # add comments and metadata to "header"
+            if k in ("title", "description"):
+                header[k] = v
+                continue
+
+            if k == "type":
+                output.append(apply_indent(f"{k}: {v}", extra=1))
+                continue
+            
+            if k == "$ref":
+                def_link = v.split("$defs/")[-1]
+
+                output.append(recursive_convert(defs.get(def_link, {}), indent=indent, no_wrap=True))
+            else:
+                output.append(apply_indent(f"{k}:", extra=1))
+                output.append(recursive_convert(v, defs=defs, indent=indent + 1))
+
+    elif isinstance(data, (list, tuple, set)):
+        output.append(apply_indent("[", extra=1))
+        for item in data:
+            output.append(recursive_convert(item, defs=defs, indent=indent + 2))
+        output.append(apply_indent("],", extra=1))
+
+    else:
+        output.append(apply_indent(f"{data}", extra=1))
+
+    # Wrap the data
+    # first, construct the header
+    tmp = [apply_indent("{")]
+    if header["title"] is not None:
+        tmp.append(f'name="{header["title"]}"')
+    if header["description"] is not None:
+        tmp.append(f'comment="{header["description"]}"')
+    # now insert it at the start of the output
+
+    if not no_wrap:
+        output.insert(0, " // ".join(tmp))
+        output.append(apply_indent("},"))
+
+    return "\n".join(output)
 
 
 def convert_model_to_struct(model: BaseModel.__class__) -> str:
@@ -108,4 +87,4 @@ def convert_model_to_struct(model: BaseModel.__class__) -> str:
     Returns:
         str: The generated prompt string.
     """
-    return json.dumps(recursive_convert(model), indent=2)
+    return recursive_convert(model.model_json_schema())
