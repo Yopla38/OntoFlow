@@ -15,6 +15,7 @@ import gc
 import io
 import json
 import logging
+import os
 import re
 import subprocess
 from concurrent.futures import ThreadPoolExecutor
@@ -33,6 +34,7 @@ from transformers import AutoTokenizer, AutoModel
 
 from ..CONSTANT import API_KEY_PATH, EMBEDDING_MODEL, LOCAL_EMBEDDING_PATH, LANGUAGE, OLLAMA_BASE_URL
 from ..provider.get_key import get_openai_key
+from ..json_coerce.wrapper import StructuredWrapper
 
 #  Installation pour le provider local :
 # https: // forums.developer.nvidia.com / t / installing - cuda - on - ubuntu - 22 - 04 - rxt4080 - laptop / 292899
@@ -41,10 +43,12 @@ from ..provider.get_key import get_openai_key
 # attempt to collect openai API key
 api_key = get_openai_key(api_key_path=API_KEY_PATH)
 
+LOCAL_LLM = False
 try:
     # if no key is found, assume local deployment
     if api_key == "":
         CLIENT_OPENAI = openai.AsyncClient(base_url=OLLAMA_BASE_URL, api_key="ollama")
+        LOCAL_LLM = True
     else:
         CLIENT_OPENAI = openai.AsyncClient(api_key=api_key)
 finally:
@@ -112,6 +116,10 @@ class LLMProvider(ABC):
         self.history = ConversationHistory()
         self.log_file = 'GPT_log.json'
 
+        # wipe logfile
+        if self.log_file and os.path.exists(self.log_file):
+            os.remove(self.log_file)
+
     @abstractmethod
     async def generate_response(self, prompt: Union[str, List[Dict[str, str]]], **kwargs) -> str:
         pass
@@ -120,12 +128,22 @@ class LLMProvider(ABC):
     async def generate_response_for_humain(self, messages: List[Dict[str, str]], stream=None) -> Dict[str, Any]:
         pass
 
-    def write_log(self, receive_text=None):
+    def write_log(self, params: dict | None = None, append: bool = True):
+        if params is None:
+            params = {}
+        
+        params["timestamp"] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
         if self.log_file:
-            timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            log = f"Timestamp : {timestamp}\n{receive_text}"
-            with open(self.log_file, 'w') as f:
-                f.write(log)
+            data = []
+            if append and os.path.exists(self.log_file):
+                with open(self.log_file, "r") as f:
+                    data = [json.load(f)]
+
+            data.append(params)
+
+            with open(self.log_file, 'w+') as f:
+                json.dump(data, indent=2, fp=f)
 
     @abstractmethod
     async def generate_embeddings(self, texts: List[str]) -> List[List[float]]:
@@ -229,7 +247,7 @@ class OpenAIProvider(LLMProvider):
                 return await self.client.chat.completions.create(**params)
 
             # Si un modèle Pydantic est fourni
-            if pydantic_model:
+            if pydantic_model and not LOCAL_LLM:
                 response = await self.client.beta.chat.completions.parse(
                     messages=formatted_messages,
                     model=self.model,
@@ -237,6 +255,17 @@ class OpenAIProvider(LLMProvider):
                 )
 
                 return response.choices[0].message.parsed.model_dump()
+
+            if pydantic_model and LOCAL_LLM:
+                # If running locally, use the json_coerced_chat_oneshot method
+                response = await StructuredWrapper.json_coerced_chat_oneshot(
+                    client=self.client,
+                    structure=pydantic_model,
+                    model=self.model,
+                    prompt=formatted_messages
+                )
+
+                return pydantic_model.model_validate(response).model_dump()
 
             # Cas standard
             response = await self.client.chat.completions.create(**params)

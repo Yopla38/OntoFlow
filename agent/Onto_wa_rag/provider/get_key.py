@@ -13,7 +13,7 @@ from pathlib import Path
 
 
 def get_openai_key(api_key_path: Path | str) -> str:
-    api_key_path = os.path.join(api_key_path, "openAI_key.txt")
+    api_key_path = os.path.join(os.path.expanduser(api_key_path), "openAI_key.txt")
     # Lire la clé d'API depuis le fichier
     api_key = ""
     if os.path.exists(api_key_path):
@@ -23,7 +23,7 @@ def get_openai_key(api_key_path: Path | str) -> str:
 
 
 def get_anthropic_key(api_key_path: Path | str) -> str:
-    api_key_path = os.path.join(api_key_path, "anthropicAI_key.txt")
+    api_key_path = os.path.join(os.path.expanduser(api_key_path), "anthropicAI_key.txt")
     # Lire la clé d'API depuis le fichier
     api_key = ""
     if os.path.exists(api_key_path):

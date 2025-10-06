@@ -22,6 +22,14 @@ elif os.path.exists("/home/yopla/Documents/keys/"):
 else:
     API_KEY_PATH = "~"
 
+LOCAL_MODEL = False
+full_api_key_path = os.path.join(os.path.expanduser(API_KEY_PATH), "openAI_key.txt")
+if not os.path.exists(full_api_key_path):
+    print("### API key not found, attempting local execution ###")
+    LOCAL_MODEL = True
+else:
+    print("### Located API key file ###")
+
 OLLAMA_BASE_URL = "http://localhost:11434/v1"
 
 # Pour Integration_fortran_RAG
@@ -42,10 +50,10 @@ VISION_AGENT_MODEL = "claude-sonnet-4-20250514"
 VISION_NB_STEP_AGENT = 8
 
 # ---------------- EMBEDDING -----------
-EMBEDDING_MODEL = "text-embedding-3-large"
+EMBEDDING_MODEL = "nomic-embed-text" if LOCAL_MODEL else "text-embedding-3-large"
 
 # ---------------- LLM --------------------
-LLM_MODEL = "gpt-4o"
+LLM_MODEL = "gpt-oss" if LOCAL_MODEL else "gpt-4o"
 
 # ---------------- HOPFIELD PARAMETER ---------
 BETA = 20.0  # valeur de séparation des motifs appris. Valeur plus élevée pour une classification plus précise
