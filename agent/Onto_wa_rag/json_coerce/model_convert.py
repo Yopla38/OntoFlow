@@ -8,17 +8,19 @@ Description: Agent IA d'Intégration Continue
 ------------------------------------------
 """
 
-import json
-from typing import Any, List, Literal, Optional, Union, get_args, get_origin
+from typing import Any, Optional
 from pydantic import BaseModel
-from pydantic.fields import FieldInfo
 
 
-def recursive_convert(data: Any, defs: Optional[dict[Any, Any]] = None, indent: int = 0, no_wrap: bool = False) -> str:
-
+def recursive_convert(
+    data: Any,
+    defs: Optional[dict[Any, Any]] = None,
+    indent: int = 0,
+    no_wrap: bool = False,
+) -> str:
     def apply_indent(string: str, extra: int = 0) -> str:
         return "  " * (indent + extra) + string
-    
+
     header = {"title": None, "description": None}
     output = []
     if isinstance(data, dict):
@@ -43,11 +45,15 @@ def recursive_convert(data: Any, defs: Optional[dict[Any, Any]] = None, indent: 
             if k == "type":
                 output.append(apply_indent(f"{k}: {v}", extra=1))
                 continue
-            
+
             if k == "$ref":
                 def_link = v.split("$defs/")[-1]
 
-                output.append(recursive_convert(defs.get(def_link, {}), indent=indent, no_wrap=True))
+                output.append(
+                    recursive_convert(
+                        defs.get(def_link, {}), indent=indent, no_wrap=True
+                    )
+                )
             else:
                 output.append(apply_indent(f"{k}:", extra=1))
                 output.append(recursive_convert(v, defs=defs, indent=indent + 1))

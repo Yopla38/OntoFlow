@@ -114,7 +114,9 @@ Do not respond with any other content, only the JSON object with the following f
         if result == "":
             return {}
 
-        parsed = await self._validate_output(result, current_retries, max_retries, model)
+        parsed = await self._validate_output(
+            result, current_retries, max_retries, model
+        )
 
         return json.loads(parsed)
 
